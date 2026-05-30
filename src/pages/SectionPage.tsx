@@ -1,0 +1,88 @@
+import { useEffect, useMemo, useState } from 'react';
+import { useParams } from 'react-router-dom';
+import { Box, Typography, Pagination } from '@mui/material';
+import { Post } from '../types';
+import PostList from '../components/PostList';
+import coverTravel from '../../img/cover_travel.jpg';
+import coverBooks from '../../img/cover_books.jpg';
+import coverGuest from '../../img/cover_guest.jpg';
+import coverMisl from '../../img/cover_misl.jpg';
+
+export const sectionMeta: Record<string, { image: string; header: string; caption: string; details: string, icon?: string }> = {
+  Travel: { image: coverTravel, header: 'ভ্রমণিকা', caption:  'ভ্রমণ সংকলন। কাছে দূরে, দেশে বিদেশে, নানান অভিজ্ঞতা।', 
+    details:"এখন আর ভ্রমণের জন্যে ছুটির তোয়াক্কা করতে হয়না। বছরের যেকোন সময়ে বেড়িয়ে পড়তে পারলেই হলো।শুধু রেস্তো থাকা চাই। এখন তো গুগল, বিভিন্ন ট্রাভেল গাইড বুক, ট‍্যুর অপারেটর সংগঠন, পর্যটন মেলা -- ভ্রমণ অনেক সহজ করে দিয়েছে।\n\nমনে আছে ছোট বেলায় বাবা মার সাথে বেড়াতে যেতাম একটা টাইম টেবিল ও একখানা ভ্রমণ সঙ্গী ভরসা করে। যাবতীয় খরচের টাকা একটা কাঁধব‍্যাগে থাকতো,পথে ঘাটে চুরি চামারির অত ভয় ছিল না।\n\nএখন পরিবার ছাড়াও সাথে আছে প্রয়াসের বন্ধুরা, স্বামীর কর্মক্ষেত্রের বন্ধুরা পরিবার সহ, আছে ভাইবোনের দল ,সুযোগ সুবিধামতো বেড়িয়ে পড়ি।" 
+  },
+  Essays: { image: coverBooks, header: 'মনের আনন্দ', caption: 'বই পড়া, গান শোনা, সিনেমা দেখা, আর আড্ডার সাথে ধর্মচর্চাও।', 
+    details:"ব‌ই পড়তে ভালোবাসি ছোট থেকেই। সব রকমের ব‌ই, রবীন্দ্রনাথ, বঙ্কিমচন্দ্র, শরৎচন্দ্র থেকে আধুনিক লেখক। বিভূতিভূষণ বন্দোপাধ্যায়ের লেখা পড়তে খুব ভালো লাগে।\n\nব‌ই পড়তে পড়তে কখনো কালকূটের সাথে পথ চলি, কখনো ঋজু‌দার সঙ্গে জঙ্গলে ঘুরে বেড়াই, কখনো নীললোহিতের সাথে দিকশূণ‍্যপুরে পাড়ি জমাই। আবার যখন ঠাকুরের ব‌ই পড়ি মন ঘরের কোনায় স্থির হয়ে বসে।\n\nআগে বেশিরভাগ সিনেমা হতো বিখ্যাত লেখকের ব‌ই থেকে গল্প নিয়ে। তাই সেই সব সিনেমা দেখতে যত ভালো লাগতো সেগুলো নিয়ে নিজেদের মধ্যে গল্প করতেও ভালো লাগত। এখনো অনেক ভালো সিনেমা তৈরী হয়। যেগুলো ভালো লাগেসেগুলো নিয়ে গল্প করতে ইচ্ছে করে।\n\nদিন যত গড়াচ্ছে, যত অস্তাচলের দিকে এগিয়ে যাচ্ছি, পুরোনো কথা ভাবতে, বলতে খুব ভালো লাগে। কর্মহীন অবসর জীবনকে আনন্দময় রাখতে যা প্রয়োজন তা হলো আনন্দ উপভোগ করার ক্ষমতা‌কে টিকিয়ে রাখা, বাঁচিয়ে রাখা, মুগ্ধ হতে, বিস্মিত হতে পারা। মনকে আনন্দিত হতে দেওয়া।" 
+  },
+  Miscellaneous: { image: coverMisl, header: 'টুকিটাকি', caption: 'সব রকম চিন্তা ভাবনা, ভালো লাগা, মন্দ লাগা; যা কিছু মনে आসে।', 
+    details:"স্মৃতি‌র তোরঙ্গটি খুলতেই দেখি কতো কিছু জমে আছে তার মধ্যে।\nআমার ছেলেবেলা আমার মেয়েবেলা আমার ঘরসংসার বেলা।\n\nকতো মধুর স্মৃতি, কতো পাওয়া না পাওয়ার গল্প । কত কিছু দেখলাম, কত কিছু অদেখা অচেনা রয়ে গেল। কতো কিছু পেলাম, কতো হারিয়ে ফেললাম, কতো লোকের সাথে দেখা হল, কতো লোককে ভুলে গেলাম। \n\nজাদুকরের বাক্সের মতো আমার এই তোরঙ্গটি নানা ভাবনা চিন্তা, ইচ্ছা, আশা, কল্পনা দিয়ে ভরা।\n\nটুকিটাকি তে টুকরো কথা টুকরো স্মৃতি টুকরো গল্প দিয়ে ভরিয়ে দেব।  যেমন পুরোনো কথা থাকবে তেমনই বর্তমান ও ভবিষ্যতের ও ছায়াপাত হবে এখানে।" },
+  'Guest': { image: coverGuest, header: 'অতিথির কলম', caption: 'এই কলমটি আপনার। আপনাদের কিছু বাছাই করা লেখার সংকলন', 
+    details:"আমার বাতায়নের আঙিনায় অতিথিদের স্বাগতম।\n\nতাঁদের সৃষ্টির স্বাদ আমার পাঠকদের সাথে ভাগ করে নিতে এই বিভাগটি চালু করা হলো।" },
+  // 'Photos': { image: coverMisl, header: 'ফটো ग্যালারি', caption: 'দেখা आর भावনার सংमিশ्रণ।', details:"" }
+};
+
+interface SectionPageProps {
+  posts: Post[];
+  fontSize: number;
+}
+
+const PAGE_SIZE = 10;
+
+export default function SectionPage({ posts }: SectionPageProps) {
+  const { sectionId } = useParams<{ sectionId: string }>();
+  const sectionPosts = useMemo(
+    () => posts.filter((post) => post.section === sectionId),
+    [posts, sectionId]
+  );
+  const [page, setPage] = useState(1);
+
+  useEffect(() => {
+    setPage(1);
+  }, [sectionPosts]);
+
+  const pageCount = Math.max(1, Math.ceil(sectionPosts.length / PAGE_SIZE));
+  const currentPosts = sectionPosts.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+
+  return (
+    <Box>
+      <Box
+        sx={{
+          position: 'relative',
+          borderRadius: 4,
+          overflow: 'hidden',
+          mb: 4,
+          minHeight: { xs: 220, md: 300 },
+          backgroundImage: `url(${sectionMeta[sectionId ?? 'Travel']?.image})`,
+          backgroundSize: 'cover',
+          backgroundPosition: 'center'
+        }}
+      >
+        <Box sx={{ position: 'absolute', inset: 0, background: 'linear-gradient(to bottom, rgba(16,10,6,0.15), rgba(16,10,6,0.65))' }} />
+        <Box sx={{ position: 'relative', zIndex: 1, p: { xs: 3, md: 5 }, display: 'flex', flexDirection: 'column', justifyContent: 'center', height: '100%' }}>
+          <Typography variant="h4" sx={{ color: '#fff', fontWeight: 700, textShadow: '0 12px 24px rgba(0,0,0,0.3)' }}>
+            {sectionMeta[sectionId ?? 'Travel']?.header ?? sectionId}
+          </Typography>
+          <Typography variant="body1" sx={{ color: 'rgba(255,255,255,0.92)', mt: 1, maxWidth: 760, whiteSpace: 'pre-wrap', lineHeight: 1.7 }}>
+            {sectionMeta[sectionId ?? 'Travel']?.details ?? 'এই বিভাগের গল্প ও পাঠ।'}
+          </Typography>
+        </Box>
+      </Box>
+      {sectionPosts.length ? (
+        <>
+          <PostList posts={currentPosts} title={`${sectionId}` } />
+          <Box sx={{ display: 'flex', justifyContent: 'center', mt: 4 }}>
+            <Pagination
+              count={pageCount}
+              page={page}
+              onChange={(_, value) => setPage(value)}
+              color="primary"
+            />
+          </Box>
+        </>
+      ) : (
+        <Typography>এই বিভাগের কোনো পোস্ট পাওয়া যায়নি।</Typography>
+      )}
+    </Box>
+  );
+}

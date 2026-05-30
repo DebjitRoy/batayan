@@ -1,0 +1,42 @@
+html, body, #root {
+  margin: 0;
+  min-height: 100%;
+}
+
+:root {
+  --batayan-bg: #F4EFE7;
+  --batayan-text: #2E1D14;
+  --batayan-muted: #5A4639;
+  --batayan-accent: #8B6B55;
+  --batayan-card: #FFFFFF;
+  --batayan-pane: #F4EFE7;
+  --batayan-nav-bg: #F4EFE7;
+  --batayan-border: rgba(46, 29, 20, 0.12);
+}
+
+:root[data-theme='light'] {
+  --batayan-bg: #FFFDF8;
+  --batayan-text: #241910;
+  --batayan-muted: #6A5546;
+  --batayan-accent: #8E684E;
+  --batayan-card: #FFFFFF;
+  --batayan-pane: #FFF6EA;
+  --batayan-nav-bg: rgba(255, 253, 248, 0.96);
+  --batayan-border: rgba(36, 25, 16, 0.1);
+}
+
+body {
+  font-family: 'Inter', system-ui, sans-serif;
+  background: var(--batayan-bg);
+  color: var(--batayan-text);
+  transition: background-color 0.28s ease, color 0.28s ease;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}

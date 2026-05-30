@@ -1,0 +1,15 @@
+.contentBlock {
+  border-radius: 18px;
+  background: rgba(255,255,255,0.84);
+  backdrop-filter: blur(10px);
+  box-shadow: 0 24px 60px rgba(60, 40, 20, 0.08);
+}
+
+.sectionHeader {
+  display: grid;
+  gap: 8px;
+}
+
+.sectionHeader h2 {
+  margin: 0;
+}
