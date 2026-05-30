@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
-import { Alert, Box, Button, Chip, CircularProgress, Stack, Typography } from '@mui/material';
+import { Alert, Box, Chip, CircularProgress, Stack, Typography } from '@mui/material';
 import { CommentItem, Post } from '../types';
 import SectionRenderer from '../components/SectionRenderer';
 import CommentSection from '../components/CommentSection';
@@ -19,7 +19,7 @@ export default function PostPage({ posts }: PostPageProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const related = useMemo(
-    () => posts.filter((item) => item.section === post?.section && item.id !== post?.id).slice(0, 2),
+    () => posts.filter((item) => item.section === post?.section && item.id !== post?.id).slice(0, 4),
     [posts, post]
   );
 
@@ -72,8 +72,8 @@ export default function PostPage({ posts }: PostPageProps) {
       )}
       {error && <Alert severity="warning">{error}</Alert>}
 
-      <Box sx={{ display: 'grid', gap: 2 }}>
-        <Typography variant="h3" sx={{ fontWeight: 700 }}>
+      <Box sx={{ display: 'grid', gap: 2, pt:1}}>
+        <Typography variant="h4">
           {post.title}
         </Typography>
         <Typography color="text.secondary">
@@ -105,23 +105,53 @@ export default function PostPage({ posts }: PostPageProps) {
       <Box>
         <SectionRenderer sections={post.sections} />
       </Box>
-
-      <CommentSection comments={comments.length ? comments : post.comments} />
-
       {related.length > 0 && (
         <Box>
           <Typography variant="h6" gutterBottom>
-            আরো পড়ুন
+            এইরকম আরো কিছু
           </Typography>
-          <Stack spacing={2}>
+          <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} sx={{ overflowX: { xs: 'visible', sm: 'auto' }, py: 1 }}>
             {related.map((item) => (
-              <Button key={item.id} component={Link} to={`/post/${item.id}`} variant="outlined">
-                {item.title}
-              </Button>
+              <Box
+                key={item.id}
+                component={Link}
+                to={`/post/${item.id}`}
+                sx={{
+                  display: 'block',
+                  position: 'relative',
+                  width: { xs: '100%', sm: 160 },
+                  minWidth: { xs: '100%', sm: 160 },
+                  height: { xs: 64, sm: 110 },
+                  borderRadius: 2,
+                  overflow: 'hidden',
+                  textDecoration: 'none',
+                  boxShadow: '0 8px 20px rgba(0,0,0,0.08)'
+                }}
+              >
+                <Box
+                  component="img"
+                  src={item.heroImage}
+                  alt={item.title}
+                  sx={{
+                    width: '100%',
+                    height: '100%',
+                    objectFit: 'cover',
+                    filter: 'blur(4px) brightness(0.65)',
+                    transform: 'scale(1.06)'
+                  }}
+                />
+                <Box sx={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'flex-end', p: 1 }}>
+                  <Typography variant="caption" sx={{ color: '#fff', fontWeight: 700, textShadow: '0 6px 18px rgba(0,0,0,0.45)', lineHeight: 1.1 }}>
+                    {item.title}
+                  </Typography>
+                </Box>
+              </Box>
             ))}
           </Stack>
         </Box>
       )}
+      <CommentSection comments={comments.length ? comments : post.comments} />
+      
     </Box>
   );
 }
