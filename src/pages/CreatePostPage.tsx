@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Box, Button, TextField, Typography, Paper, Stack, IconButton } from '@mui/material';
+import { Box, Button, TextField, Typography, Paper, Stack, IconButton, Select, MenuItem } from '@mui/material';
 import { Post } from '../types';
 import DeleteIcon from '@mui/icons-material/Delete';
 
@@ -7,11 +7,18 @@ interface CreatePostPageProps {
   onCreate: (post: Post) => void;
 }
 
+const TITLE_MAX_LENGTH = 100;
+const SUMMARY_MAX_LENGTH = 500;
+const IMAGE_MAX_SIZE_BYTES = 300 * 1024;
+const IMAGE_MAX_SIZE_LABEL = '300KB';
+
 export default function CreatePostPage({ onCreate }: CreatePostPageProps) {
   const [title, setTitle] = useState('');
   const [summary, setSummary] = useState('');
   const [heroImage, setHeroImage] = useState('');
   const [heroFile, setHeroFile] = useState<File | null>(null);
+  const [heroImageError, setHeroImageError] = useState('');
+  const [sectionImageErrors, setSectionImageErrors] = useState<Record<string, string>>({});
   const [section, setSection] = useState('Travel');
   const [type, setType] = useState('Travel');
   const [postedDate, setPostedDate] = useState(new Date().toISOString().slice(0, 10));
@@ -77,9 +84,29 @@ export default function CreatePostPage({ onCreate }: CreatePostPageProps) {
 
   const removeSection = (id: string) => {
     setSectionsState((s) => s.filter((x) => x.id !== id));
+    setSectionImageErrors((errors) => {
+      const nextErrors = { ...errors };
+      delete nextErrors[id];
+      return nextErrors;
+    });
+  };
+
+  const validateImageFile = (file: File) => {
+    if (file.size > IMAGE_MAX_SIZE_BYTES) {
+      return `Image must be ${IMAGE_MAX_SIZE_LABEL} or smaller.`;
+    }
+
+    return '';
   };
 
   const handleSectionFile = (file: File, id: string) => {
+    const error = validateImageFile(file);
+    if (error) {
+      setSectionImageErrors((errors) => ({ ...errors, [id]: error }));
+      return;
+    }
+
+    setSectionImageErrors((errors) => ({ ...errors, [id]: '' }));
     const reader = new FileReader();
     reader.onload = () => {
       setSectionsState((s) => s.map((sec) => (sec.id === id ? { ...sec, imageFile: file, imagePreview: String(reader.result) } : sec)));
@@ -88,11 +115,21 @@ export default function CreatePostPage({ onCreate }: CreatePostPageProps) {
   };
 
   const handleHeroFile = (file: File) => {
+    const error = validateImageFile(file);
+    if (error) {
+      setHeroImageError(error);
+      setHeroFile(null);
+      setHeroImage('');
+      return;
+    }
+
+    setHeroImageError('');
     setHeroFile(file);
     const reader = new FileReader();
     reader.onload = () => setHeroImage(String(reader.result));
     reader.readAsDataURL(file);
   };
+  const postCategories = { travel: "ভ্রমণিকা" ,  books: "মনের আনন্দ" , miscl: "টুকিটাকি" , guest: "অতিথির কলম" };
 
   return (
     <Paper sx={{ p: 4, maxWidth: 760, mx: 'auto' }} elevation={3}>
@@ -100,11 +137,29 @@ export default function CreatePostPage({ onCreate }: CreatePostPageProps) {
         নতুন পোস্ট তৈরি করুন
       </Typography>
       <Stack spacing={3}>
-        <TextField label="শিরোনাম" value={title} onChange={(event) => setTitle(event.target.value)} fullWidth />
+        <TextField
+          label="শিরোনাম"
+          value={title}
+          onChange={(event) => setTitle(event.target.value)}
+          inputProps={{ maxLength: TITLE_MAX_LENGTH }}
+          helperText={`${title.length}/${TITLE_MAX_LENGTH}`}
+          FormHelperTextProps={{ sx: { textAlign: 'right' } }}
+          fullWidth
+        />
+        <Select label="বিভাগ" value={section} onChange={(event) => setSection(event.target.value)} fullWidth>
+          {Object.entries(postCategories).map(([key, value]) => (
+            <MenuItem key={key} value={key}>
+              {value}
+            </MenuItem>
+          ))}
+        </Select>
         <TextField
           label="সারাংশ"
           value={summary}
           onChange={(event) => setSummary(event.target.value)}
+          inputProps={{ maxLength: SUMMARY_MAX_LENGTH }}
+          helperText={`${summary.length}/${SUMMARY_MAX_LENGTH}`}
+          FormHelperTextProps={{ sx: { textAlign: 'right' } }}
           multiline
           rows={3}
           fullWidth
@@ -126,11 +181,19 @@ export default function CreatePostPage({ onCreate }: CreatePostPageProps) {
               accept="image/*"
               style={{ display: 'none' }}
               id="hero-file-input"
-              onChange={(e) => e.target.files && handleHeroFile(e.target.files[0])}
+              onChange={(e) => {
+                if (e.target.files?.[0]) {
+                  handleHeroFile(e.target.files[0]);
+                  e.target.value = '';
+                }
+              }}
             />
             <label htmlFor="hero-file-input">
               <Button component="span">Choose file</Button>
             </label>
+            <Typography variant="caption" sx={{ display: 'block', mt: 1, color: heroImageError ? 'error.main' : 'var(--batayan-muted)' }}>
+              {heroImageError || `Maximum image size: ${IMAGE_MAX_SIZE_LABEL}`}
+            </Typography>
             {heroImage && (
               <Box sx={{ mt: 2 }}>
                 <img src={heroImage} alt="hero preview" style={{ width: '100%', borderRadius: 8 }} />
@@ -139,7 +202,7 @@ export default function CreatePostPage({ onCreate }: CreatePostPageProps) {
           </Box>
         </Box>
 
-        <TextField label="বিভাগ" value={section} onChange={(event) => setSection(event.target.value)} fullWidth />
+       
         <TextField label="ধরন" value={type} onChange={(event) => setType(event.target.value)} fullWidth />
         <TextField
           label="প্রকাশের তারিখ"
@@ -197,11 +260,26 @@ export default function CreatePostPage({ onCreate }: CreatePostPageProps) {
                       accept="image/*"
                       style={{ display: 'none' }}
                       id={`sec-file-${sec.id}`}
-                      onChange={(e) => e.target.files && handleSectionFile(e.target.files[0], sec.id)}
+                      onChange={(e) => {
+                        if (e.target.files?.[0]) {
+                          handleSectionFile(e.target.files[0], sec.id);
+                          e.target.value = '';
+                        }
+                      }}
                     />
                     <label htmlFor={`sec-file-${sec.id}`}>
                       <Button component="span">Choose image</Button>
                     </label>
+                    <Typography
+                      variant="caption"
+                      sx={{
+                        display: 'block',
+                        mt: 1,
+                        color: sectionImageErrors[sec.id] ? 'error.main' : 'var(--batayan-muted)'
+                      }}
+                    >
+                      {sectionImageErrors[sec.id] || `Maximum image size: ${IMAGE_MAX_SIZE_LABEL}`}
+                    </Typography>
                     {sec.imagePreview && (
                       <Box sx={{ mt: 1 }}>
                         <img src={sec.imagePreview} alt="section preview" style={{ width: '100%', borderRadius: 6 }} />
