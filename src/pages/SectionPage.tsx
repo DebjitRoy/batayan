@@ -1,6 +1,6 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, useRef } from 'react';
 import { useParams } from 'react-router-dom';
-import { Box, Typography, Pagination, TextField, Paper, IconButton, ClickAwayListener, InputAdornment } from '@mui/material';
+import { Box, Typography, Pagination, TextField, Paper, IconButton, ClickAwayListener, InputAdornment, Chip } from '@mui/material';
 import SearchIcon from '@mui/icons-material/Search';
 import CloseIcon from '@mui/icons-material/Close';
 import { Post } from '../types';
@@ -40,6 +40,9 @@ export default function SectionPage({ posts }: SectionPageProps) {
   const [query, setQuery] = useState('');
   const [page, setPage] = useState(1);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const searchInputRef = useRef<HTMLInputElement | null>(null);
+  const ignoreClickAway = useRef(false);
+  const desktopSearchRef = useRef<HTMLInputElement | null>(null);
 
   const filteredPosts = useMemo(
     () =>
@@ -53,6 +56,13 @@ export default function SectionPage({ posts }: SectionPageProps) {
   useEffect(() => {
     setPage(1);
   }, [sectionPosts, query]);
+
+  // focus the floating search input when it is opened
+  useEffect(() => {
+    if (!isSearchOpen) return;
+    const t = window.setTimeout(() => searchInputRef.current?.focus(), 80);
+    return () => window.clearTimeout(t);
+  }, [isSearchOpen]);
 
   // Scroll to top whenever the sectionId changes (navigating to a new section)
   useEffect(() => {
@@ -88,12 +98,49 @@ export default function SectionPage({ posts }: SectionPageProps) {
           <Typography variant="body1" sx={{ color: 'rgba(255,255,255,0.92)', mt: 1, maxWidth: 760, whiteSpace: 'pre-wrap', lineHeight: 1.7 }}>
             {sectionMeta[sectionId ?? 'Travel']?.details ?? 'এই বিভাগের গল্প ও পাঠ।'}
           </Typography>
+          <Box sx={{ mt: 2, display: { xs: 'none', md: 'block' }, maxWidth: 560 }}>
+            <TextField
+              inputRef={desktopSearchRef}
+              size="small"
+              placeholder="পোস্ট খুঁজুন"
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+              fullWidth
+              sx={{ bgcolor: 'rgba(255,255,255,0.95)', borderRadius: 1 }}
+            />
+          </Box>
         </Box>
       </Box>
       {sectionPosts.length ? (
         <>
           {filteredPosts.length ? (
             <>
+              {query && (
+                <Box sx={{ mb: 2 }}>
+                  <Chip
+                    label={query}
+                    onClick={() => {
+                      const isDesktop = typeof window !== 'undefined' && window.matchMedia && window.matchMedia('(min-width:900px)').matches;
+                      if (isDesktop) {
+                        desktopSearchRef.current?.focus();
+                      } else {
+                        if (!isSearchOpen) {
+                          ignoreClickAway.current = true;
+                          setIsSearchOpen(true);
+                          // allow ClickAwayListener to ignore this click
+                          setTimeout(() => (ignoreClickAway.current = false), 0);
+                        } else {
+                          searchInputRef.current?.focus();
+                        }
+                      }
+                    }}
+                    onDelete={() => {
+                      setQuery('');
+                      setIsSearchOpen(false);
+                    }}
+                  />
+                </Box>
+              )}
               <PostList posts={currentPosts} title={`${sectionId}`} />
               <Box sx={{ display: 'flex', justifyContent: 'center', mt: 4 }}>
                 <Pagination
@@ -112,7 +159,13 @@ export default function SectionPage({ posts }: SectionPageProps) {
         <Typography>এই বিভাগের কোনো পোস্ট পাওয়া যায়নি।</Typography>
       )}
 
-      <ClickAwayListener onClickAway={() => setIsSearchOpen(false)}>
+      <ClickAwayListener onClickAway={() => {
+        if (ignoreClickAway.current) {
+          ignoreClickAway.current = false;
+          return;
+        }
+        setIsSearchOpen(false);
+      }}>
         <Paper
           elevation={6}
           sx={{
@@ -134,6 +187,7 @@ export default function SectionPage({ posts }: SectionPageProps) {
         >
           {isSearchOpen ? (
             <TextField
+              inputRef={searchInputRef}
               size="small"
               placeholder="পোস্ট খুঁজুন"
               value={query}
@@ -161,7 +215,7 @@ export default function SectionPage({ posts }: SectionPageProps) {
             <IconButton
               onClick={() => setIsSearchOpen(true)}
               size="small"
-              sx={{ color: 'inherit' }}
+              sx={{ color: 'inherit', display: { xs: 'flex', md: 'none' } }}
             >
               <SearchIcon fontSize="small" />
             </IconButton>
