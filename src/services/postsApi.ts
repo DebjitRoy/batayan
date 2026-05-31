@@ -80,6 +80,30 @@ const videoUrl = (value: string) => {
 
 const mapPostType = (postType?: string) => sectionLabels[postType ?? ''] ?? postType ?? 'Miscellaneous';
 
+export const normalizePostType = (postType?: string | null) => {
+  if (!postType) return undefined;
+
+  const value = postType.trim().toLowerCase();
+  const aliases: Record<string, string> = {
+    travel: 'travel',
+    travels: 'travel',
+    essay: 'books',
+    essays: 'books',
+    book: 'books',
+    books: 'books',
+    misc: 'miscl',
+    miscellaneous: 'miscl',
+    miscl: 'miscl',
+    guest: 'guest',
+    'guest-column': 'guest',
+    gallery: 'gallery',
+    photos: 'gallery',
+    photo: 'gallery'
+  };
+
+  return aliases[value] ?? value;
+};
+
 const mapSections = (post: ApiPost): ContentSection[] => {
   const sections: ContentSection[] = [];
 
@@ -183,15 +207,27 @@ async function requestJson<T>(path: string): Promise<T> {
   return response.json() as Promise<T>;
 }
 
-export async function fetchPosts(limit = DEFAULT_LIST_LIMIT): Promise<Post[]> {
+export async function fetchPosts(limit = DEFAULT_LIST_LIMIT, postType?: string): Promise<Post[]> {
   const query = new URLSearchParams({
     limit: String(limit),
     page: '1',
     select: 'title,gist,photoHero,createdAt,postType,searchBy'
   });
+
+  const normalizedPostType = normalizePostType(postType);
+  if (normalizedPostType) {
+    query.set('postType', normalizedPostType);
+  }
+
   const response = await requestJson<ApiListResponse<ApiPostListItem>>(`/posts?${query.toString()}`);
 
   return response.data.map(mapPost);
+}
+
+export async function fetchLatestPost(postType?: string): Promise<Post | undefined> {
+  const posts = await fetchPosts(1, postType);
+
+  return posts[0];
 }
 
 export async function fetchPost(postId: string): Promise<Post> {

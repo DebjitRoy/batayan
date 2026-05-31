@@ -6,6 +6,7 @@ import Layout from './components/Layout';
 import HomePage from './pages/HomePage';
 import SectionPage from './pages/SectionPage';
 import PostPage from './pages/PostPage';
+import LatestPostRedirect from './pages/LatestPostRedirect';
 import SearchIndex from './pages/SearchIndex';
 import LoginPage from './pages/LoginPage';
 import AdminPage from './pages/AdminPage';
@@ -111,6 +112,7 @@ function App() {
                 path="/section/:sectionId"
                 element={<SectionPage posts={posts} fontSize={fontSize} />}
               />
+              <Route path="/post/latest" element={<LatestPostRedirect />} />
               <Route
                 path="/post/:postId"
                 element={<PostPage posts={posts} fontSize={fontSize} />}

@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useParams } from 'react-router-dom';
-import { Box, Typography, Pagination } from '@mui/material';
+import { Box, Typography, Pagination, TextField, Paper, IconButton, ClickAwayListener, InputAdornment } from '@mui/material';
+import SearchIcon from '@mui/icons-material/Search';
+import CloseIcon from '@mui/icons-material/Close';
 import { Post } from '../types';
 import PostList from '../components/PostList';
 import coverTravel from '../../img/cover_travel.jpg';
@@ -35,11 +37,22 @@ export default function SectionPage({ posts }: SectionPageProps) {
     () => posts.filter((post) => post.section === sectionId),
     [posts, sectionId]
   );
+  const [query, setQuery] = useState('');
   const [page, setPage] = useState(1);
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
+
+  const filteredPosts = useMemo(
+    () =>
+      sectionPosts.filter((post) => {
+        const searchText = `${post.title} ${post.summary} ${post.tags.join(' ')}`.toLowerCase();
+        return searchText.includes(query.toLowerCase());
+      }),
+    [sectionPosts, query]
+  );
 
   useEffect(() => {
     setPage(1);
-  }, [sectionPosts]);
+  }, [sectionPosts, query]);
 
   // Scroll to top whenever the sectionId changes (navigating to a new section)
   useEffect(() => {
@@ -50,8 +63,8 @@ export default function SectionPage({ posts }: SectionPageProps) {
     }
   }, [sectionId]);
 
-  const pageCount = Math.max(1, Math.ceil(sectionPosts.length / PAGE_SIZE));
-  const currentPosts = sectionPosts.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+  const pageCount = Math.max(1, Math.ceil(filteredPosts.length / PAGE_SIZE));
+  const currentPosts = filteredPosts.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
   return (
     <Box>
@@ -79,19 +92,82 @@ export default function SectionPage({ posts }: SectionPageProps) {
       </Box>
       {sectionPosts.length ? (
         <>
-          <PostList posts={currentPosts} title={`${sectionId}` } />
-          <Box sx={{ display: 'flex', justifyContent: 'center', mt: 4 }}>
-            <Pagination
-              count={pageCount}
-              page={page}
-              onChange={(_, value) => setPage(value)}
-              color="primary"
-            />
-          </Box>
+          {filteredPosts.length ? (
+            <>
+              <PostList posts={currentPosts} title={`${sectionId}`} />
+              <Box sx={{ display: 'flex', justifyContent: 'center', mt: 4 }}>
+                <Pagination
+                  count={pageCount}
+                  page={page}
+                  onChange={(_, value) => setPage(value)}
+                  color="primary"
+                />
+              </Box>
+            </>
+          ) : (
+            <Typography>কোনো পোস্ট পাওয়া যায়নি আপনার খোঁজ অনুযায়ী।</Typography>
+          )}
         </>
       ) : (
         <Typography>এই বিভাগের কোনো পোস্ট পাওয়া যায়নি।</Typography>
       )}
+
+      <ClickAwayListener onClickAway={() => setIsSearchOpen(false)}>
+        <Paper
+          elevation={6}
+          sx={{
+            position: 'fixed',
+            right: 16,
+            bottom: 92,
+            zIndex: 1400,
+            display: 'flex',
+            alignItems: 'center',
+            gap: 1,
+            p: isSearchOpen ? 1 : 0,
+            bgcolor: 'var(--batayan-card)',
+            borderRadius: 3,
+            boxShadow: '0 12px 30px rgba(0,0,0,0.12)',
+            transition: 'all 0.2s ease',
+            width: isSearchOpen ? { xs: 'calc(100vw - 56px)', sm: 320 } : 44,
+            maxWidth: '100%'
+          }}
+        >
+          {isSearchOpen ? (
+            <TextField
+              size="small"
+              placeholder="পোস্ট খুঁজুন"
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+              fullWidth
+              InputProps={{
+                endAdornment: (
+                  <InputAdornment position="end">
+                    <IconButton
+                      size="small"
+                      onClick={() => setIsSearchOpen(false)}
+                      sx={{ color: 'inherit' }}
+                    >
+                      <CloseIcon fontSize="small" />
+                    </IconButton>
+                  </InputAdornment>
+                )
+              }}
+              sx={{
+                bgcolor: 'rgba(255,255,255,0.95)',
+                borderRadius: 2
+              }}
+            />
+          ) : (
+            <IconButton
+              onClick={() => setIsSearchOpen(true)}
+              size="small"
+              sx={{ color: 'inherit' }}
+            >
+              <SearchIcon fontSize="small" />
+            </IconButton>
+          )}
+        </Paper>
+      </ClickAwayListener>
     </Box>
   );
 }

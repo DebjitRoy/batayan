@@ -35,7 +35,7 @@ export default function NavBar({ user, onLogout, colorMode, onColorModeToggle }:
               {value.header}
             </Button>
           ))}
-          {/* <Tooltip title={colorMode === 'dark' ? 'Light mode' : 'Dark mode'}>
+          <Tooltip title={colorMode === 'dark' ? 'Light mode' : 'Dark mode'}>
             <IconButton
               color="inherit"
               aria-label="toggle color mode"
@@ -44,7 +44,7 @@ export default function NavBar({ user, onLogout, colorMode, onColorModeToggle }:
             >
               {colorMode === 'dark' ? <LightModeIcon /> : <DarkModeIcon />}
             </IconButton>
-          </Tooltip> */}
+          </Tooltip>
           <Tooltip title="Search Index">
             <IconButton component={Link} to="/index" color="inherit" sx={{ color: navIconColor }}>
               <SearchIcon />
@@ -87,10 +87,10 @@ export default function NavBar({ user, onLogout, colorMode, onColorModeToggle }:
           anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
           transformOrigin={{ vertical: 'top', horizontal: 'right' }}
         >
-          {/* <MenuItem onClick={() => { onColorModeToggle(); setAnchorEl(null); }} sx={{ gap: 1 }}>
+          <MenuItem onClick={() => { onColorModeToggle(); setAnchorEl(null); }} sx={{ gap: 1 }}>
             {colorMode === 'dark' ? <LightModeIcon sx={{ mr: 1 }} /> : <DarkModeIcon sx={{ mr: 1 }} />}
             {colorMode === 'dark' ? 'Light mode' : 'Dark mode'}
-          </MenuItem> */}
+          </MenuItem>
           {Object.entries(sectionMeta).map(([key, value]) => (
             <MenuItem key={key} onClick={() => setAnchorEl(null)} component={Link} to={`/section/${key}`}>
               {value.header}

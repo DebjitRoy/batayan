@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { Alert, Box, Chip, CircularProgress, Stack, Typography } from '@mui/material';
 import { CommentItem, Post } from '../types';
@@ -18,10 +18,45 @@ export default function PostPage({ posts }: PostPageProps) {
   const [comments, setComments] = useState<CommentItem[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const related = useMemo(
-    () => posts.filter((item) => item.section === post?.section && item.id !== post?.id).slice(0, 4),
-    [posts, post]
-  );
+  const [showRelated, setShowRelated] = useState(false);
+  const [showComments, setShowComments] = useState(false);
+  const [readProgress, setReadProgress] = useState(0);
+  const contentRef = useRef<HTMLDivElement | null>(null);
+  const endRef = useRef<HTMLDivElement | null>(null);
+
+  const related = useMemo(() => {
+    if (!post) return [];
+
+    const sectionPosts = posts
+      .filter((item) => item.section === post.section)
+      .slice()
+      .sort((a, b) => new Date(a.postedDate).getTime() - new Date(b.postedDate).getTime());
+
+    const currentIndex = sectionPosts.findIndex((item) => item.id === post.id);
+    if (currentIndex === -1) {
+      return sectionPosts.slice(0, 4).filter((item) => item.id !== post.id);
+    }
+
+    let nearest: Post[] = [];
+    if (sectionPosts.length === 1) {
+      nearest = [];
+    } else if (currentIndex === 0) {
+      nearest = sectionPosts.slice(1, 3);
+    } else if (currentIndex === sectionPosts.length - 1) {
+      nearest = sectionPosts.slice(Math.max(0, sectionPosts.length - 3), sectionPosts.length - 1);
+    } else {
+      nearest = [sectionPosts[currentIndex - 1], sectionPosts[currentIndex + 1]];
+    }
+
+    const nearestIds = new Set(nearest.map((item) => item.id));
+    const randomCandidates = sectionPosts
+      .filter((item) => item.id !== post.id && !nearestIds.has(item.id));
+
+    const shuffled = randomCandidates.sort(() => Math.random() - 0.5);
+    const randomSelection = shuffled.slice(0, 2);
+
+    return [...nearest, ...randomSelection];
+  }, [posts, post]);
 
   useEffect(() => {
     setPost(listPost);
@@ -63,6 +98,65 @@ export default function PostPage({ posts }: PostPageProps) {
     };
   }, [postId]);
 
+  useEffect(() => {
+    setShowRelated(false);
+    setShowComments(false);
+    if (!endRef.current) return;
+
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          setShowRelated(true);
+        }
+      },
+      { rootMargin: '0px 0px -20% 0px', threshold: 0.25 }
+    );
+
+    observer.observe(endRef.current);
+    return () => observer.disconnect();
+  }, [postId, related.length]);
+
+  useEffect(() => {
+    if (!showRelated) return;
+
+    const timer = window.setTimeout(() => {
+      setShowComments(true);
+    }, 580);
+
+    return () => window.clearTimeout(timer);
+  }, [showRelated]);
+
+  useEffect(() => {
+    const updateProgress = () => {
+      const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
+      const windowHeight = window.innerHeight;
+
+      if (contentRef.current && endRef.current) {
+        const contentTop = contentRef.current.getBoundingClientRect().top + scrollTop;
+        const contentBottom = endRef.current.getBoundingClientRect().top + scrollTop;
+        const totalHeight = Math.max(1, contentBottom - contentTop);
+        const progress = ((scrollTop + windowHeight - contentTop) / totalHeight) * 100;
+        setReadProgress(Math.min(100, Math.max(0, Math.round(progress))));
+        return;
+      }
+
+      const docHeight = document.documentElement.scrollHeight;
+      const maxScroll = Math.max(1, docHeight - windowHeight);
+      const progress = Math.round((scrollTop / maxScroll) * 100);
+      setReadProgress(Math.min(100, Math.max(0, progress)));
+    };
+
+    setReadProgress(0);
+    updateProgress();
+    window.addEventListener('scroll', updateProgress, { passive: true });
+    window.addEventListener('resize', updateProgress);
+
+    return () => {
+      window.removeEventListener('scroll', updateProgress);
+      window.removeEventListener('resize', updateProgress);
+    };
+  }, [postId]);
+
   if (!post) {
     return (
       <Box sx={{ display: 'grid', justifyItems: 'center', gap: 2 }}>
@@ -74,6 +168,11 @@ export default function PostPage({ posts }: PostPageProps) {
 
   return (
     <Box sx={{ display: 'grid', gap: 4 }}>
+      <Box sx={{ position: 'fixed', top: { xs: 64, md: 76 }, right: 16, zIndex: 1200, width: { xs: 'calc(100% - 32px)', sm: 320 }, maxWidth: '100%', px: 0, py: 0.5, bgcolor: 'transparent' }}>
+        <Box sx={{ width: '100%', height: 4, bgcolor: 'rgba(255,255,255,0.18)', borderRadius: 999, overflow: 'hidden' }}>
+          <Box sx={{ width: `${readProgress}%`, height: '100%', bgcolor: '#fff', transition: 'width 0.18s ease' }} />
+        </Box>
+      </Box>
       {isLoading && (
         <Box sx={{ display: 'flex', justifyContent: 'center' }}>
           <CircularProgress size={28} />
@@ -81,7 +180,7 @@ export default function PostPage({ posts }: PostPageProps) {
       )}
       {error && <Alert severity="warning">{error}</Alert>}
 
-      <Box sx={{ display: 'grid', gap: 2, pt:1}}>
+      <Box ref={contentRef} sx={{ display: 'grid', gap: 2, pt:1}}>
         <Typography variant="h4">
           {post.title}
         </Typography>
@@ -107,8 +206,16 @@ export default function PostPage({ posts }: PostPageProps) {
       <Box>
         <SectionRenderer sections={post.sections} />
       </Box>
+      <Box ref={endRef} sx={{ height: 1, width: '100%' }} />
       {related.length > 0 && (
-        <Box>
+        <Box
+          sx={{
+            opacity: showRelated ? 1 : 0,
+            transform: showRelated ? 'translateY(0)' : 'translateY(24px)',
+            transition: 'opacity 0.55s ease, transform 0.55s ease',
+            pointerEvents: showRelated ? 'auto' : 'none'
+          }}
+        >
           <Typography variant="h6" gutterBottom>
             এইরকম আরো কিছু
           </Typography>
@@ -152,8 +259,16 @@ export default function PostPage({ posts }: PostPageProps) {
           </Stack>
         </Box>
       )}
-      <CommentSection comments={comments.length ? comments : post.comments} />
-      
+      <Box
+        sx={{
+          opacity: showComments ? 1 : 0,
+          transform: showComments ? 'translateY(0)' : 'translateY(32px)',
+          transition: 'opacity 0.45s ease 0.55s, transform 0.45s ease 0.55s',
+          pointerEvents: showComments ? 'auto' : 'none'
+        }}
+      >
+        <CommentSection comments={comments.length ? comments : post.comments} />
+      </Box>
     </Box>
   );
 }
