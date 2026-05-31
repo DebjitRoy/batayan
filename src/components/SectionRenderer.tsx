@@ -11,7 +11,7 @@ export default function SectionRenderer({ sections }: SectionRendererProps) {
       {sections.map((section) => {
         if (section.type === 'text') {
           return (
-            <Typography key={section.id} sx={{ lineHeight: 1.8, whiteSpace: 'pre-wrap',  }}>
+            <Typography key={section.id} sx={{ lineHeight: 1.8, whiteSpace: 'pre-wrap', color: 'var(--batayan-muted)' }}>
               {section.content}
             </Typography>
           );

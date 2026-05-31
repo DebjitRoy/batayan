@@ -51,6 +51,9 @@ export default function PostCard({ post }: PostCardProps) {
         </Box>
         <CardContent>
           <Stack spacing={1}>
+             <Typography variant="caption" sx={{ color: 'var(--batayan-accent)', fontWeight: 600 }}>
+                {post.postedDate}
+              </Typography>
             <Typography variant="h6" component="div">
               {post.title}
             </Typography>
@@ -58,7 +61,6 @@ export default function PostCard({ post }: PostCardProps) {
               {post.summary}
             </Typography>
             <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
-              <Chip label={post.section} size="small" />
               {post.tags.slice(0, 2).map((tag) => (
                 <Chip key={tag} label={tag} size="small" variant="outlined" />
               ))}

@@ -41,6 +41,15 @@ export default function SectionPage({ posts }: SectionPageProps) {
     setPage(1);
   }, [sectionPosts]);
 
+  // Scroll to top whenever the sectionId changes (navigating to a new section)
+  useEffect(() => {
+    try {
+      window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
+    } catch (e) {
+      // no-op in environments without window
+    }
+  }, [sectionId]);
+
   const pageCount = Math.max(1, Math.ceil(sectionPosts.length / PAGE_SIZE));
   const currentPosts = sectionPosts.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 

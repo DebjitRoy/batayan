@@ -24,7 +24,14 @@ export default function HomePage({ posts, sections }: HomePageProps) {
   const cards = sections.slice(0, 4);
 
   return (
-    <Box sx={{ display: 'grid', gap: 5 }}>
+    <Box
+      sx={{
+        display: 'grid',
+        gap: 5,
+        minHeight: '100vh',
+        px: { xs: 2, md: 0 }
+      }}
+    >
       <Box
         sx={{
           position: 'relative',
@@ -37,23 +44,18 @@ export default function HomePage({ posts, sections }: HomePageProps) {
         }}
       >
         <Box sx={{ position: 'absolute', inset: 0, bgcolor: 'rgba(16,10,6,0.35)' }} />
-        <Box sx={{ position: 'relative', zIndex: 1, p: { xs: 3, md: 6 }, display: 'flex', flexDirection: 'column', justifyContent: 'flex-end', height: '100%' }}>
-          <Typography variant="h3" sx={{ fontWeight: 700, color: '#fff', maxWidth: 720, textShadow: '0 18px 40px rgba(0,0,0,0.32)' }}>
-            বাতায়ন
-          </Typography>
-          <Typography variant="body1" sx={{ maxWidth: 720, color: 'rgba(255,255,255,0.92)', mt: 2 }}>
-            জীবন বদলে যায় বাইরের দৃশ্যের মতো। স্মৃতির পাতায় ধরা আছে কত মুহুর্ত
-              - তারা ভিড় করে আসে বাতায়ন খুললেই।
-          </Typography>
-          <Button component={Link} to="/index" variant="outlined" sx={{ mt: 3, width: 'fit-content', color: '#fff', borderColor: '#fff', '&:hover': { borderColor: '#fff', bgcolor: 'rgba(255,255,255,0.08)' } }}>
-            সূচিপত্র
-          </Button>
-        </Box>
-        {/* <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
-          <Button component={Link} to="/index" variant="contained">
-            সূচিপত্র
-          </Button>
-        </Stack> */}
+          <Box sx={{ position: 'relative', zIndex: 1, p: { xs: 3, md: 6 }, display: 'flex', flexDirection: 'column', justifyContent: 'flex-end', height: '100%' }}>
+            <Typography variant="h3" sx={{ fontWeight: 700, color: '#fff', maxWidth: 720, textShadow: '0 18px 40px rgba(0,0,0,0.32)' }}>
+              বাতায়ন
+            </Typography>
+            <Typography variant="body1" sx={{ maxWidth: 720, color: 'rgba(255,255,255,0.92)', mt: 2 }}>
+              জীবন বদলে যায় বাইরের দৃশ্যের মতো। স্মৃতির পাতায় ধরা আছে কত মুহুর্ত
+                - তারা ভিড় করে আসে বাতায়ন খুললেই।
+            </Typography>
+            <Button component={Link} to="/index" variant="outlined" sx={{ mt: 3, width: 'fit-content', color: '#fff', borderColor: '#fff', '&:hover': { borderColor: '#fff', bgcolor: 'rgba(255,255,255,0.08)' } }}>
+              সূচিপত্র
+            </Button>
+          </Box>
       </Box>
       <Box sx={{ px: { xs: 0, md: 2 } }}>
         <Typography variant="h5" gutterBottom>
@@ -82,11 +84,13 @@ export default function HomePage({ posts, sections }: HomePageProps) {
                   flexDirection: 'column',
                   borderRadius: 2,
                   overflow: 'hidden',
-                  bgcolor: 'var(--batayan-card)',
-                  boxShadow: '0 2px 12px rgba(0,0,0,0.08)',
+                  bgcolor: 'rgba(255,255,255,0.78)',
+                  backdropFilter: 'blur(12px)',
+                  border: '1px solid rgba(255,255,255,0.6)',
+                  boxShadow: '0 24px 60px rgba(15, 20, 28, 0.12)',
                   transition: 'all 0.3s ease',
                   '&:hover': {
-                    boxShadow: '0 8px 24px rgba(0,0,0,0.12)',
+                    boxShadow: '0 32px 80px rgba(15, 20, 28, 0.16)',
                     transform: 'translateY(-4px)'
                   }
                 }}

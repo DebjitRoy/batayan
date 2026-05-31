@@ -58,14 +58,14 @@ export default function CommentSection({ comments }: CommentSectionProps) {
           onChange={(event) => setName(event.target.value)}
         />
         <TextField
-          label="আপনার মন্তব্য"
+          label="আপনার মতামত"
           value={message}
           multiline
           rows={3}
           onChange={(event) => setMessage(event.target.value)}
         />
         <Button variant="contained" onClick={addComment} disabled={!name || !message}>
-          মন্তব্য জমা দিন
+          মতামত জানান
         </Button>
       </Stack>
 
@@ -87,9 +87,9 @@ export default function CommentSection({ comments }: CommentSectionProps) {
                   </Typography>
                 </Box>
               )}
-              <Button sx={{ mt: 1 }} size="small" onClick={() => likeComment(comment.id)}>
+              {/* <Button sx={{ mt: 1 }} size="small" onClick={() => likeComment(comment.id)}>
                 Like {comment.likes}
-              </Button>
+              </Button> */}
             </CardContent>
           </Card>
         ))}

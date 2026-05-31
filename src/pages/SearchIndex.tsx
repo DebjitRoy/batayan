@@ -32,7 +32,7 @@ export default function SearchIndex({ posts }: SearchIndexProps) {
     <Box sx={{ display: 'grid', gap: 4 }}>
       <Box>
         <Typography variant="h4" gutterBottom>
-          পোস্ট সূচি
+          সূচিপত্র
         </Typography>
         <Typography sx={{ color: 'var(--batayan-muted)' }}>
           সমস্ত পোস্ট খুঁজুন টাইটেল, সারাংশ বা ট্যাগ দিয়ে।

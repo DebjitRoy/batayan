@@ -27,6 +27,15 @@ export default function PostPage({ posts }: PostPageProps) {
     setPost(listPost);
   }, [listPost]);
 
+  // Scroll to top whenever the postId changes (navigating to a new post)
+  useEffect(() => {
+    try {
+      window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
+    } catch (e) {
+      // no-op in environments without window
+    }
+  }, [postId]);
+
   useEffect(() => {
     if (!postId) return;
 
@@ -94,13 +103,6 @@ export default function PostPage({ posts }: PostPageProps) {
         )}
       </Box>
 
-      {post.summary && (
-        <Box>
-          <Typography variant="body1" sx={{ color: 'var(--batayan-muted)', lineHeight: 1.8 }}>
-            {post.summary}
-          </Typography>
-        </Box>
-      )}
 
       <Box>
         <SectionRenderer sections={post.sections} />
