@@ -267,7 +267,7 @@ export default function PostPage({ posts }: PostPageProps) {
           pointerEvents: showComments ? 'auto' : 'none'
         }}
       >
-        <CommentSection comments={comments.length ? comments : post.comments} />
+      <CommentSection comments={comments.length ? comments : post.comments} postId={post.id} />
       </Box>
     </Box>
   );

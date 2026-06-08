@@ -5,7 +5,7 @@ import FontSizeController from './FontSizeController';
 
 interface LayoutProps {
   children: ReactNode;
-  user: { name: string } | null;
+  user: { name: string; token: string } | null;
   onLogout: () => void;
   fontSize: number;
   onFontSizeChange: (value: number) => void;

@@ -13,7 +13,7 @@ import { sectionMeta } from '../pages/SectionPage';
 
 interface NavBarProps {
   // sections: string[];
-  user: { name: string } | null;
+  user: { name: string; token: string } | null;
   onLogout: () => void;
   colorMode: 'dark' | 'light';
   onColorModeToggle: () => void;

@@ -1,10 +1,11 @@
 import { useEffect, useMemo, useState, useRef } from 'react';
 import { useParams } from 'react-router-dom';
-import { Box, Typography, Pagination, TextField, Paper, IconButton, ClickAwayListener, InputAdornment, Chip } from '@mui/material';
+import { Box, CircularProgress, Typography, Pagination, TextField, Paper, IconButton, ClickAwayListener, InputAdornment, Chip } from '@mui/material';
 import SearchIcon from '@mui/icons-material/Search';
 import CloseIcon from '@mui/icons-material/Close';
 import { Post } from '../types';
 import PostList from '../components/PostList';
+import { fetchPosts } from '../services/postsApi';
 import coverTravel from '../../img/cover_travel.jpg';
 import coverBooks from '../../img/cover_books.jpg';
 import coverGuest from '../../img/cover_guest.jpg';
@@ -40,17 +41,57 @@ export default function SectionPage({ posts }: SectionPageProps) {
   const [query, setQuery] = useState('');
   const [page, setPage] = useState(1);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const [apiSearchPosts, setApiSearchPosts] = useState<Post[] | null>(null);
+  const [isSearching, setIsSearching] = useState(false);
   const searchInputRef = useRef<HTMLInputElement | null>(null);
   const ignoreClickAway = useRef(false);
   const desktopSearchRef = useRef<HTMLInputElement | null>(null);
+  const trimmedQuery = query.trim();
+  const shouldUseApiSearch = trimmedQuery.length >= 2;
+
+  useEffect(() => {
+    if (!shouldUseApiSearch) {
+      setApiSearchPosts(null);
+      setIsSearching(false);
+      return undefined;
+    }
+
+    let isMounted = true;
+    const timeoutId = window.setTimeout(() => {
+      setIsSearching(true);
+      fetchPosts(100, undefined, trimmedQuery)
+        .then((results) => {
+          if (!isMounted) return;
+          setApiSearchPosts(results);
+        })
+        .catch(() => {
+          if (!isMounted) return;
+          setApiSearchPosts([]);
+        })
+        .finally(() => {
+          if (!isMounted) return;
+          setIsSearching(false);
+        });
+    }, 300);
+
+    return () => {
+      isMounted = false;
+      window.clearTimeout(timeoutId);
+    };
+  }, [shouldUseApiSearch, trimmedQuery]);
+
+  const searchSourcePosts = apiSearchPosts ?? sectionPosts;
 
   const filteredPosts = useMemo(
     () =>
-      sectionPosts.filter((post) => {
-        const searchText = `${post.title} ${post.summary} ${post.tags.join(' ')}`.toLowerCase();
-        return searchText.includes(query.toLowerCase());
+      searchSourcePosts.filter((post) => {
+        const matchesSection = post.section === sectionId;
+        const matchesQuery =
+          shouldUseApiSearch ||
+          `${post.title} ${post.summary} ${post.tags.join(' ')}`.toLowerCase().includes(trimmedQuery.toLowerCase());
+        return matchesSection && matchesQuery;
       }),
-    [sectionPosts, query]
+    [searchSourcePosts, sectionId, shouldUseApiSearch, trimmedQuery]
   );
 
   useEffect(() => {
@@ -112,49 +153,56 @@ export default function SectionPage({ posts }: SectionPageProps) {
         </Box>
       </Box>
       {sectionPosts.length ? (
-        <>
-          {filteredPosts.length ? (
-            <>
-              {query && (
-                <Box sx={{ mb: 2 }}>
-                  <Chip
-                    label={query}
-                    onClick={() => {
-                      const isDesktop = typeof window !== 'undefined' && window.matchMedia && window.matchMedia('(min-width:900px)').matches;
-                      if (isDesktop) {
-                        desktopSearchRef.current?.focus();
+          <>
+            {query && (
+              <Box sx={{ mb: 2 }}>
+                <Chip
+                  label={query}
+                  onClick={() => {
+                    const isDesktop = typeof window !== 'undefined' && window.matchMedia && window.matchMedia('(min-width:900px)').matches;
+                    if (isDesktop) {
+                      desktopSearchRef.current?.focus();
+                    } else {
+                      if (!isSearchOpen) {
+                        ignoreClickAway.current = true;
+                        setIsSearchOpen(true);
+                        // allow ClickAwayListener to ignore this click
+                        setTimeout(() => (ignoreClickAway.current = false), 0);
                       } else {
-                        if (!isSearchOpen) {
-                          ignoreClickAway.current = true;
-                          setIsSearchOpen(true);
-                          // allow ClickAwayListener to ignore this click
-                          setTimeout(() => (ignoreClickAway.current = false), 0);
-                        } else {
-                          searchInputRef.current?.focus();
-                        }
+                        searchInputRef.current?.focus();
                       }
-                    }}
-                    onDelete={() => {
-                      setQuery('');
-                      setIsSearchOpen(false);
-                    }}
-                  />
-                </Box>
-              )}
-              <PostList posts={currentPosts} title={`${sectionId}`} />
-              <Box sx={{ display: 'flex', justifyContent: 'center', mt: 4 }}>
-                <Pagination
-                  count={pageCount}
-                  page={page}
-                  onChange={(_, value) => setPage(value)}
-                  color="primary"
+                    }
+                  }}
+                  onDelete={() => {
+                    setQuery('');
+                    setIsSearchOpen(false);
+                  }}
                 />
               </Box>
-            </>
-          ) : (
-            <Typography>কোনো পোস্ট পাওয়া যায়নি আপনার খোঁজ অনুযায়ী।</Typography>
-          )}
-        </>
+            )}
+            {isSearching && (
+              <Box sx={{ display: 'flex', justifyContent: 'center', py: 2 }}>
+                <CircularProgress size={24} />
+              </Box>
+            )}
+            {filteredPosts.length ? (
+              <>
+                <PostList posts={currentPosts} title={`${sectionId}`} />
+                <Box sx={{ display: 'flex', justifyContent: 'center', mt: 4 }}>
+                  <Pagination
+                    count={pageCount}
+                    page={page}
+                    onChange={(_, value) => setPage(value)}
+                    color="primary"
+                  />
+                </Box>
+              </>
+            ) : (
+              <Box sx={{ display: 'flex', justifyContent: 'center', pt: 10 }}>
+                <Typography>No posts found for this search.</Typography>
+              </Box>
+            )}
+          </>
       ) : (
         <Typography>এই বিভাগের কোনো পোস্ট পাওয়া যায়নি।</Typography>
       )}
@@ -170,10 +218,11 @@ export default function SectionPage({ posts }: SectionPageProps) {
           elevation={6}
           sx={{
             position: 'fixed',
+            left: isSearchOpen ? { xs: 16, sm: 'auto' } : 'auto',
             right: 16,
             bottom: 92,
             zIndex: 1400,
-            display: 'flex',
+            display: { xs: 'flex', md: 'none' },
             alignItems: 'center',
             gap: 1,
             p: isSearchOpen ? 1 : 0,
@@ -181,8 +230,9 @@ export default function SectionPage({ posts }: SectionPageProps) {
             borderRadius: 3,
             boxShadow: '0 12px 30px rgba(0,0,0,0.12)',
             transition: 'all 0.2s ease',
-            width: isSearchOpen ? { xs: 'calc(100vw - 56px)', sm: 320 } : 44,
-            maxWidth: '100%'
+            width: isSearchOpen ? { xs: 'auto', sm: 320 } : 44,
+            minWidth: isSearchOpen ? 0 : 44,
+            maxWidth: 'calc(100vw - 32px)'
           }}
         >
           {isSearchOpen ? (

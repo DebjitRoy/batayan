@@ -1,12 +1,14 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Box, Button, TextField, Typography, Stack, Card, CardContent } from '@mui/material';
 import { CommentItem } from '../types';
+import { createComment } from '../services/postsApi';
 
 interface CommentSectionProps {
   comments: CommentItem[];
+  postId: string;
 }
 
-export default function CommentSection({ comments }: CommentSectionProps) {
+export default function CommentSection({ comments, postId }: CommentSectionProps) {
   const [localComments, setLocalComments] = useState<CommentItem[]>(comments);
   const [name, setName] = useState('');
   const [message, setMessage] = useState('');
@@ -20,21 +22,30 @@ export default function CommentSection({ comments }: CommentSectionProps) {
     [localComments]
   );
 
-  const addComment = () => {
+  const addComment = async () => {
     if (!name.trim() || !message.trim()) return;
 
-    setLocalComments((current) => [
-      {
-        id: `c-${Date.now()}`,
-        author: name.trim(),
-        date: new Date().toISOString().slice(0, 10),
-        text: message.trim(),
-        likes: 0
-      },
-      ...current
-    ]);
-    setName('');
-    setMessage('');
+    const fallbackComment = {
+      id: `c-${Date.now()}`,
+      author: name.trim(),
+      date: new Date().toISOString().slice(0, 10),
+      text: message.trim(),
+      likes: 0
+    };
+
+    try {
+      const savedComment = await createComment(postId, {
+        username: name.trim(),
+        description: message.trim()
+      });
+      setLocalComments((current) => [savedComment, ...current]);
+      setName('');
+      setMessage('');
+    } catch {
+      setLocalComments((current) => [fallbackComment, ...current]);
+      setName('');
+      setMessage('');
+    }
   };
 
   const likeComment = (id: string) => {

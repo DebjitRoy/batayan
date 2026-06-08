@@ -13,7 +13,7 @@ import AdminPage from './pages/AdminPage';
 import CreatePostPage from './pages/CreatePostPage';
 import { posts as initialPosts } from './data/posts';
 import { Post } from './types';
-import { fetchPosts } from './services/postsApi';
+import { CreatePostInput, createPost, deletePost, fetchPosts, loginAuthor } from './services/postsApi';
 
 function App() {
   const [posts, setPosts] = useState<Post[]>(initialPosts);
@@ -21,7 +21,7 @@ function App() {
   const [postsError, setPostsError] = useState<string | null>(null);
   const [fontSize, setFontSize] = useState(16);
   const [colorMode, setColorMode] = useState<'dark' | 'light'>('dark');
-  const [user, setUser] = useState<{ name: string } | null>(null);
+  const [user, setUser] = useState<{ name: string; token: string } | null>(null);
   const navigate = useNavigate();
   const location = useLocation();
   const prefersReducedMotion = useReducedMotion();
@@ -31,17 +31,23 @@ function App() {
     [posts]
   );
 
-  const handleLogin = (name: string) => {
-    setUser({ name });
+  const handleLogin = async (email: string, password: string) => {
+    const response = await loginAuthor(email, password);
+    setUser({ name: response.user.name || response.user.email, token: response.token });
     navigate('/admin');
   };
 
-  const handleCreatePost = (newPost: Post) => {
-    setPosts((current) => [newPost, ...current]);
+  const handleCreatePost = async (newPost: CreatePostInput) => {
+    if (!user) return;
+    const createdPost = await createPost(newPost, user.token);
+    setPosts((current) => [createdPost, ...current]);
     navigate('/admin');
   };
 
-  const handleDelete = (id: string) => {
+  const handleDelete = async (id: string) => {
+    if (user) {
+      await deletePost(id, user.token);
+    }
     setPosts((current) => current.filter((post) => post.id !== id));
   };
 

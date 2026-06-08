@@ -1,35 +1,43 @@
 import { useState } from 'react';
-import { Box, Button, TextField, Typography, Paper } from '@mui/material';
+import { Alert, Box, Button, Paper, TextField, Typography } from '@mui/material';
 
 interface LoginPageProps {
-  onLogin: (name: string) => void;
+  onLogin: (email: string, password: string) => Promise<void>;
 }
 
 export default function LoginPage({ onLogin }: LoginPageProps) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-
-  const submit = () => {
-    if (email.trim() && password.trim()) {
-      onLogin(email.trim());
-    }
-  };
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState('');
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
   const isSubmitDisabled = !email.trim() || !password.trim() || !emailRegex.test(email) || password.length < 4;
+
+  const submit = async () => {
+    if (isSubmitDisabled) return;
+
+    setIsSubmitting(true);
+    setError('');
+    try {
+      await onLogin(email.trim(), password);
+    } catch {
+      setError('Login failed. Please check your email and password.');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
   return (
     <Paper sx={{ p: 4, maxWidth: 520, mx: 'auto' }} elevation={3}>
       <Typography variant="h4" gutterBottom>
         লেখকের পাতা
       </Typography>
-      {/* <Typography sx={{ mb: 3, color: 'var(--batayan-muted)' }}>
-        এমভিপি লগইন, কোনো ডাটাবেস ছাড়া সরল সেশন মডেল।
-      </Typography> */}
       <Box sx={{ display: 'grid', gap: 2 }}>
+        {error && <Alert severity="error">{error}</Alert>}
         <TextField
           label="আপনার ইমেইল"
           value={email}
-          type='email'
+          type="email"
           onChange={(event) => setEmail(event.target.value)}
         />
         <TextField
@@ -38,7 +46,7 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
           value={password}
           onChange={(event) => setPassword(event.target.value)}
         />
-        <Button variant="contained" onClick={submit} disabled={isSubmitDisabled}>
+        <Button variant="contained" onClick={submit} disabled={isSubmitDisabled || isSubmitting}>
           প্রবেশ করুন
         </Button>
       </Box>

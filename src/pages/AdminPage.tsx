@@ -7,7 +7,7 @@ import { Link } from 'react-router-dom';
 
 interface AdminPageProps {
   posts: Post[];
-  onDelete: (id: string) => void;
+  onDelete: (id: string) => Promise<void> | void;
 }
 
 export default function AdminPage({ posts, onDelete }: AdminPageProps) {

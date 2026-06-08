@@ -1,10 +1,10 @@
 import { useState } from 'react';
-import { Box, Button, TextField, Typography, Paper, Stack, IconButton, Select, MenuItem } from '@mui/material';
-import { Post } from '../types';
+import { Alert, Box, Button, TextField, Typography, Paper, Stack, IconButton, Select, MenuItem } from '@mui/material';
 import DeleteIcon from '@mui/icons-material/Delete';
+import { CreatePostInput } from '../services/postsApi';
 
 interface CreatePostPageProps {
-  onCreate: (post: Post) => void;
+  onCreate: (post: CreatePostInput) => Promise<void>;
 }
 
 const TITLE_MAX_LENGTH = 100;
@@ -19,9 +19,11 @@ export default function CreatePostPage({ onCreate }: CreatePostPageProps) {
   const [heroFile, setHeroFile] = useState<File | null>(null);
   const [heroImageError, setHeroImageError] = useState('');
   const [sectionImageErrors, setSectionImageErrors] = useState<Record<string, string>>({});
-  const [section, setSection] = useState('Travel');
-  const [type, setType] = useState('Travel');
+  const [section, setSection] = useState('travel');
+  const [type, setType] = useState('travel');
   const [postedDate, setPostedDate] = useState(new Date().toISOString().slice(0, 10));
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState('');
 
   const [sectionsState, setSectionsState] = useState<{
     id: string;
@@ -34,48 +36,41 @@ export default function CreatePostPage({ onCreate }: CreatePostPageProps) {
     videoCaption?: string;
   }[]>([]);
 
-  const submit = () => {
-    if (!title || !summary || !heroImage) return;
-    const contentSections: Post['sections'] = [];
+  const submit = async () => {
+    if (!title || !summary || !heroFile) return;
 
-    // Add summary as an initial text section
-    contentSections.push({ id: `s-summary-${Date.now()}`, type: 'text', content: summary });
-
-    // Convert each composed section into one or more ContentSection entries
-    sectionsState.forEach((s, idx) => {
-      if (s.header) {
-        contentSections.push({ id: `s-${idx}-header-${Date.now()}`, type: 'text', content: s.header });
-      }
-      if (s.body) {
-        contentSections.push({ id: `s-${idx}-body-${Date.now()}`, type: 'text', content: s.body });
-      }
-      if (s.imagePreview) {
-        contentSections.push({ id: `s-${idx}-img-${Date.now()}`, type: 'image', content: s.imagePreview, caption: s.imageCaption });
-      }
-      if (s.videoLink) {
-        // normalize youtube urls to embed form when possible
-        let embed = s.videoLink;
-        if (embed.includes('watch?v=')) embed = embed.replace('watch?v=', 'embed/');
-        if (embed.includes('youtu.be/')) embed = embed.replace('youtu.be/', 'www.youtube.com/embed/');
-        contentSections.push({ id: `s-${idx}-vid-${Date.now()}`, type: 'video', content: embed, caption: s.videoCaption });
-      }
-    });
-
-    const newPost: Post = {
-      id: title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '') + `-${Date.now()}`,
+    const newPost: CreatePostInput = {
       title,
-      summary,
-      heroImage,
-      addedDate: postedDate,
-      postedDate,
-      section,
-      type,
-      tags: [section.toLowerCase(), 'new'],
-      sections: contentSections,
-      comments: []
+      postType: type || section,
+      gist: summary,
+      heroImageFile: heroFile,
+      searchBy: [section, title],
+      additionalInfo: '',
+      content: sectionsState.map((s) => {
+        let video = s.videoLink ?? '';
+        if (video.includes('watch?v=')) video = video.replace('watch?v=', 'embed/');
+        if (video.includes('youtu.be/')) video = video.replace('youtu.be/', 'www.youtube.com/embed/');
+
+        return {
+          header: s.header,
+          content: s.body,
+          imageFile: s.imageFile,
+          imgDescription: s.imageCaption,
+          video,
+          videoDescription: s.videoCaption
+        };
+      })
     };
 
-    onCreate(newPost);
+    setIsSubmitting(true);
+    setSubmitError('');
+    try {
+      await onCreate(newPost);
+    } catch {
+      setSubmitError('Post could not be created. Please check login and try again.');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const addSection = () => {
@@ -137,6 +132,7 @@ export default function CreatePostPage({ onCreate }: CreatePostPageProps) {
         নতুন পোস্ট তৈরি করুন
       </Typography>
       <Stack spacing={3}>
+        {submitError && <Alert severity="error">{submitError}</Alert>}
         <TextField
           label="শিরোনাম"
           value={title}
@@ -314,7 +310,7 @@ export default function CreatePostPage({ onCreate }: CreatePostPageProps) {
           </Stack>
         </Box>
 
-        <Button variant="contained" onClick={submit} disabled={!title || !summary || !heroImage}>
+        <Button variant="contained" onClick={submit} disabled={!title || !summary || !heroFile || isSubmitting}>
           পোস্ট তৈরি করুন
         </Button>
       </Stack>
