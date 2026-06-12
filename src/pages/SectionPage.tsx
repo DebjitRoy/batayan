@@ -1,10 +1,11 @@
 import { useEffect, useMemo, useState, useRef } from 'react';
 import { useParams } from 'react-router-dom';
-import { Box, CircularProgress, Typography, Pagination, TextField, Paper, IconButton, ClickAwayListener, InputAdornment, Chip } from '@mui/material';
+import { Box, Typography, Pagination, TextField, Paper, IconButton, ClickAwayListener, InputAdornment, Chip } from '@mui/material';
 import SearchIcon from '@mui/icons-material/Search';
 import CloseIcon from '@mui/icons-material/Close';
 import { Post } from '../types';
 import PostList from '../components/PostList';
+import { PostListSkeleton } from '../components/SkeletonLoaders';
 import { fetchPosts } from '../services/postsApi';
 import coverTravel from '../../img/cover_travel.jpg';
 import coverBooks from '../../img/cover_books.jpg';
@@ -28,11 +29,12 @@ export const sectionMeta: Record<string, { image: string; header: string; captio
 interface SectionPageProps {
   posts: Post[];
   fontSize: number;
+  isLoadingPosts: boolean;
 }
 
 const PAGE_SIZE = 10;
 
-export default function SectionPage({ posts }: SectionPageProps) {
+export default function SectionPage({ posts, isLoadingPosts }: SectionPageProps) {
   const { sectionId } = useParams<{ sectionId: string }>();
   const sectionPosts = useMemo(
     () => posts.filter((post) => post.section === sectionId),
@@ -152,7 +154,9 @@ export default function SectionPage({ posts }: SectionPageProps) {
           </Box>
         </Box>
       </Box>
-      {sectionPosts.length ? (
+      {isLoadingPosts ? (
+        <PostListSkeleton count={6} />
+      ) : sectionPosts.length ? (
           <>
             {query && (
               <Box sx={{ mb: 2 }}>
@@ -180,12 +184,9 @@ export default function SectionPage({ posts }: SectionPageProps) {
                 />
               </Box>
             )}
-            {isSearching && (
-              <Box sx={{ display: 'flex', justifyContent: 'center', py: 2 }}>
-                <CircularProgress size={24} />
-              </Box>
-            )}
-            {filteredPosts.length ? (
+            {isSearching ? (
+              <PostListSkeleton count={3} />
+            ) : filteredPosts.length ? (
               <>
                 <PostList posts={currentPosts} title={`${sectionId}`} />
                 <Box sx={{ display: 'flex', justifyContent: 'center', mt: 4 }}>

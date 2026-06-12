@@ -1,17 +1,19 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
-import { Alert, Box, Chip, CircularProgress, Stack, Typography } from '@mui/material';
+import { Alert, Box, Chip, Stack, Typography } from '@mui/material';
 import { CommentItem, Post } from '../types';
 import SectionRenderer from '../components/SectionRenderer';
 import CommentSection from '../components/CommentSection';
+import { PostDetailSkeleton } from '../components/SkeletonLoaders';
 import { fetchComments, fetchPost } from '../services/postsApi';
 
 interface PostPageProps {
   posts: Post[];
   fontSize: number;
+  isLoadingPosts: boolean;
 }
 
-export default function PostPage({ posts }: PostPageProps) {
+export default function PostPage({ posts, isLoadingPosts }: PostPageProps) {
   const { postId } = useParams<{ postId: string }>();
   const listPost = useMemo(() => posts.find((item) => item.id === postId), [posts, postId]);
   const [post, setPost] = useState<Post | undefined>(listPost);
@@ -101,8 +103,12 @@ export default function PostPage({ posts }: PostPageProps) {
   useEffect(() => {
     setShowRelated(false);
     setShowComments(false);
-    if (!endRef.current) return;
+  }, [postId]);
 
+  useEffect(() => {
+    if (isLoadingPosts || isLoading || !post || !endRef.current) return;
+
+    const endNode = endRef.current;
     const observer = new IntersectionObserver(
       ([entry]) => {
         if (entry.isIntersecting) {
@@ -112,9 +118,22 @@ export default function PostPage({ posts }: PostPageProps) {
       { rootMargin: '0px 0px -20% 0px', threshold: 0.25 }
     );
 
-    observer.observe(endRef.current);
-    return () => observer.disconnect();
-  }, [postId, related.length]);
+    observer.observe(endNode);
+
+    const revealIfAlreadyAtEnd = () => {
+      const rect = endNode.getBoundingClientRect();
+      if (rect.top <= window.innerHeight * 0.8 && rect.bottom >= 0) {
+        setShowRelated(true);
+      }
+    };
+
+    const frameId = window.requestAnimationFrame(revealIfAlreadyAtEnd);
+
+    return () => {
+      window.cancelAnimationFrame(frameId);
+      observer.disconnect();
+    };
+  }, [isLoading, isLoadingPosts, post, postId]);
 
   useEffect(() => {
     if (!showRelated) return;
@@ -157,10 +176,19 @@ export default function PostPage({ posts }: PostPageProps) {
     };
   }, [postId]);
 
+  if (isLoadingPosts || isLoading) {
+    return (
+      <Box sx={{ display: 'grid', gap: 2 }}>
+        {error && <Alert severity="warning">{error}</Alert>}
+        <PostDetailSkeleton />
+      </Box>
+    );
+  }
+
   if (!post) {
     return (
       <Box sx={{ display: 'grid', justifyItems: 'center', gap: 2 }}>
-        {isLoading ? <CircularProgress /> : <Typography>পোস্ট পাওয়া যায়নি।</Typography>}
+        <Typography>পোস্ট পাওয়া যায়নি।</Typography>
         {error && <Alert severity="warning">{error}</Alert>}
       </Box>
     );
@@ -173,11 +201,6 @@ export default function PostPage({ posts }: PostPageProps) {
           <Box sx={{ width: `${readProgress}%`, height: '100%', bgcolor: '#fff', transition: 'width 0.18s ease' }} />
         </Box>
       </Box>
-      {isLoading && (
-        <Box sx={{ display: 'flex', justifyContent: 'center' }}>
-          <CircularProgress size={28} />
-        </Box>
-      )}
       {error && <Alert severity="warning">{error}</Alert>}
 
       <Box ref={contentRef} sx={{ display: 'grid', gap: 2, pt:1}}>

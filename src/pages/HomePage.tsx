@@ -5,11 +5,13 @@ import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import coverHome from '../../img/cover_home.jpg';
 import { sectionMeta } from './SectionPage';
+import { HomePostSkeleton } from '../components/SkeletonLoaders';
 
 
 interface HomePageProps {
   posts: Post[];
   sections: string[];
+  isLoading: boolean;
 }
 
 const windowPaneVariants = {
@@ -19,7 +21,7 @@ const windowPaneVariants = {
 
 const MotionLink = motion(Link);
 
-export default function HomePage({ posts, sections }: HomePageProps) {
+export default function HomePage({ posts, sections, isLoading }: HomePageProps) {
   const carouselPosts = useMemo(() => posts.slice(0, 5), [posts]);
   const cards = sections.slice(0, 4);
 
@@ -61,7 +63,9 @@ export default function HomePage({ posts, sections }: HomePageProps) {
         <Typography variant="h5" gutterBottom>
           নতুন প্রকাশিত
         </Typography>
-        {carouselPosts.length ? (
+        {isLoading ? (
+          <HomePostSkeleton />
+        ) : carouselPosts.length ? (
           <Box
             sx={{
               display: 'grid',

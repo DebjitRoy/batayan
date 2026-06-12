@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Navigate, Route, Routes, useLocation, useNavigate } from 'react-router-dom';
-import { Alert, Box, CircularProgress, CssBaseline } from '@mui/material';
+import { Alert, Box, CssBaseline } from '@mui/material';
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
 import Layout from './components/Layout';
 import HomePage from './pages/HomePage';
@@ -93,11 +93,6 @@ function App() {
         colorMode={colorMode}
         onColorModeToggle={() => setColorMode((mode) => (mode === 'dark' ? 'light' : 'dark'))}
       >
-        {isLoadingPosts && (
-          <Box sx={{ display: 'flex', justifyContent: 'center', mb: 3 }}>
-            <CircularProgress size={28} />
-          </Box>
-        )}
         {postsError && (
           <Alert severity="warning" sx={{ mb: 3 }}>
             {postsError}
@@ -113,17 +108,17 @@ function App() {
             style={{ overflow: 'hidden', transformOrigin: 'center' }}
           >
             <Routes>
-              <Route path="/" element={<HomePage posts={posts} sections={sections} />} />
+              <Route path="/" element={<HomePage posts={posts} sections={sections} isLoading={isLoadingPosts} />} />
               <Route
                 path="/section/:sectionId"
-                element={<SectionPage posts={posts} fontSize={fontSize} />}
+                element={<SectionPage posts={posts} fontSize={fontSize} isLoadingPosts={isLoadingPosts} />}
               />
               <Route path="/post/latest" element={<LatestPostRedirect />} />
               <Route
                 path="/post/:postId"
-                element={<PostPage posts={posts} fontSize={fontSize} />}
+                element={<PostPage posts={posts} fontSize={fontSize} isLoadingPosts={isLoadingPosts} />}
               />
-              <Route path="/index" element={<SearchIndex posts={posts} />} />
+              <Route path="/index" element={<SearchIndex posts={posts} isLoadingPosts={isLoadingPosts} />} />
               <Route path="/login" element={<LoginPage onLogin={handleLogin} />} />
               <Route
                 path="/admin"

@@ -1,14 +1,16 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Box, CircularProgress, Grid, MenuItem, TextField, Typography } from '@mui/material';
+import { Box, Grid, MenuItem, TextField, Typography } from '@mui/material';
 import { Post } from '../types';
 import PostCard from '../components/PostCard';
+import { PostListSkeleton } from '../components/SkeletonLoaders';
 import { fetchPosts } from '../services/postsApi';
 
 interface SearchIndexProps {
   posts: Post[];
+  isLoadingPosts: boolean;
 }
 
-export default function SearchIndex({ posts }: SearchIndexProps) {
+export default function SearchIndex({ posts, isLoadingPosts }: SearchIndexProps) {
   const [query, setQuery] = useState('');
   const [section, setSection] = useState('All');
   const [apiResults, setApiResults] = useState<Post[] | null>(null);
@@ -101,20 +103,17 @@ export default function SearchIndex({ posts }: SearchIndexProps) {
         </TextField>
       </Box>
 
-      <Grid container spacing={3}>
-        {isSearching && (
-          <Grid item xs={12}>
-            <Box sx={{ display: 'flex', justifyContent: 'center', py: 2 }}>
-              <CircularProgress size={24} />
-            </Box>
-          </Grid>
-        )}
-        {results.map((post) => (
-          <Grid item xs={12} md={4} key={post.id}>
-            <PostCard post={post} />
-          </Grid>
-        ))}
-      </Grid>
+      {isLoadingPosts || isSearching ? (
+        <PostListSkeleton count={isSearching ? 3 : 6} />
+      ) : (
+        <Grid container spacing={3}>
+          {results.map((post) => (
+            <Grid item xs={12} md={4} key={post.id}>
+              <PostCard post={post} />
+            </Grid>
+          ))}
+        </Grid>
+      )}
     </Box>
   );
 }

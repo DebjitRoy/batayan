@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { Alert, Box, CircularProgress, Typography } from '@mui/material';
+import { Alert, Box, Skeleton, Typography } from '@mui/material';
 import { fetchLatestPost, normalizePostType } from '../services/postsApi';
 
 export default function LatestPostRedirect() {
@@ -45,7 +45,7 @@ export default function LatestPostRedirect() {
         <Alert severity="warning">{error}</Alert>
       ) : (
         <>
-          <CircularProgress size={28} />
+          <Skeleton variant="rounded" width={220} height={12} animation="wave" />
           <Typography sx={{ color: 'var(--batayan-muted)' }}>Opening the latest post...</Typography>
         </>
       )}
