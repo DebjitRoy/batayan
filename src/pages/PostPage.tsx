@@ -299,7 +299,11 @@ export default function PostPage({ posts, isLoadingPosts }: PostPageProps) {
           pointerEvents: showComments ? 'auto' : 'none'
         }}
       >
-      <CommentSection comments={comments.length ? comments : post.comments} postId={post.id} />
+      <CommentSection
+        comments={comments.length ? comments : post.comments}
+        postId={post.id}
+        showHint={showComments}
+      />
       </Box>
     </Box>
   );
