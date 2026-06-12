@@ -20,7 +20,7 @@ function App() {
   const [isLoadingPosts, setIsLoadingPosts] = useState(true);
   const [postsError, setPostsError] = useState<string | null>(null);
   const [fontSize, setFontSize] = useState(16);
-  const [colorMode, setColorMode] = useState<'dark' | 'light'>('dark');
+  const [colorMode, setColorMode] = useState<'dark' | 'light'>('light');
   const [user, setUser] = useState<{ name: string; token: string } | null>(null);
   const navigate = useNavigate();
   const location = useLocation();

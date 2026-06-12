@@ -61,12 +61,13 @@ export default function CommentSection({ comments, postId }: CommentSectionProps
       <Typography variant="h5" gutterBottom>
         মন্তব্য
       </Typography>
-      <Stack spacing={2} sx={{ mb: 3 }}>
+      <Stack spacing={2} sx={{ mb: 3, color: 'var(--batayan-text)', bgcolor: 'var(--batayan-card)', p: 2, borderRadius: 2 }}>
         <TextField
           label="আপনার নাম"
           value={name}
           size="small"
           onChange={(event) => setName(event.target.value)}
+          sx={{color: 'var(--batayan-text)'}}
         />
         <TextField
           label="আপনার মতামত"
@@ -74,8 +75,9 @@ export default function CommentSection({ comments, postId }: CommentSectionProps
           multiline
           rows={3}
           onChange={(event) => setMessage(event.target.value)}
+          sx={{color: 'var(--batayan-text)'}}
         />
-        <Button variant="contained" onClick={addComment} disabled={!name || !message}>
+        <Button variant="contained" onClick={addComment} disabled={!name || !message} sx={{color: 'var(--batayan-text)'}}>
           মতামত জানান
         </Button>
       </Stack>

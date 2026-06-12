@@ -140,7 +140,7 @@ export default function HomePage({ posts, sections, isLoading }: HomePageProps) 
                     }}
                   />
                 </Box>
-                <Box sx={{ p: 3, display: 'flex', flexDirection: 'column', gap: 2, flex: 1 }}>
+                <Box sx={{ p: 3, display: 'flex', flexDirection: 'column', gap: 2, flex: 1, bgcolor: 'var(--batayan-card)', color: 'var(--batayan-text)' }}>
                   <Box>
                     <Typography variant="caption" sx={{ color: 'var(--batayan-accent)', fontWeight: 600 }}>
                       {post.section} • {post.postedDate}

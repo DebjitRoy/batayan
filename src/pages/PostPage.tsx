@@ -216,13 +216,13 @@ export default function PostPage({ posts, isLoadingPosts }: PostPageProps) {
         <Typography variant="h4">
           {post.title}
         </Typography>
-        <Typography color="text.secondary">
+        <Typography sx={{ color: 'var(--batayan-text)' }}>
           প্রকাশিত: {post.postedDate} • আপডেট: {post.addedDate}
         </Typography>
         <Stack direction="row" spacing={1} sx={{ flexWrap: 'wrap' }}>
-          <Chip label={post.section} />
+          <Chip label={post.section} sx={{ color: 'var(--batayan-muted)', borderColor: 'var(--batayan-muted)' }} />
           {post.tags.map((tag) => (
-            <Chip key={tag} label={tag} variant="outlined" />
+            <Chip key={tag} label={tag} variant="outlined"  sx={{ color: 'var(--batayan-muted)', borderColor: 'var(--batayan-muted)' }}/>
           ))}
         </Stack>
       </Box>
