@@ -2,6 +2,7 @@ import { ReactNode } from 'react';
 import { Container, Box } from '@mui/material';
 import NavBar from './NavBar';
 import FontSizeController from './FontSizeController';
+import { MobileFeatureHintProvider } from '../contexts/MobileFeatureHintContext';
 
 interface LayoutProps {
   children: ReactNode;
@@ -23,14 +24,16 @@ export default function Layout({
   onColorModeToggle
 }: LayoutProps) {
   return (
-    <Box sx={{ position: 'relative' }}>
-      <NavBar user={user} onLogout={onLogout} colorMode={colorMode} onColorModeToggle={onColorModeToggle} />
-      <Box sx={{ pt: { xs: 7, md: 8 } }}>
-        <Container maxWidth="lg" sx={{ py: 4 }}>
-          <Box sx={{ fontSize: `${fontSize}px` }}>{children}</Box>
-        </Container>
+    <MobileFeatureHintProvider>
+      <Box sx={{ position: 'relative' }}>
+        <NavBar user={user} onLogout={onLogout} colorMode={colorMode} onColorModeToggle={onColorModeToggle} />
+        <Box sx={{ pt: { xs: 7, md: 8 } }}>
+          <Container maxWidth="lg" sx={{ py: 4 }}>
+            <Box sx={{ fontSize: `${fontSize}px` }}>{children}</Box>
+          </Container>
+        </Box>
+        <FontSizeController fontSize={fontSize} onChange={onFontSizeChange} />
       </Box>
-      <FontSizeController fontSize={fontSize} onChange={onFontSizeChange} />
-    </Box>
+    </MobileFeatureHintProvider>
   );
 }

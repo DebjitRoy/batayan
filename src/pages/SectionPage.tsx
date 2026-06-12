@@ -1,8 +1,15 @@
+import { keyframes } from '@emotion/react';
 import { useEffect, useMemo, useState, useRef } from 'react';
 import { useParams } from 'react-router-dom';
 import { Box, Typography, Pagination, TextField, Paper, IconButton, ClickAwayListener, InputAdornment, Chip } from '@mui/material';
+import { useMobileFeatureHint } from '../contexts/MobileFeatureHintContext';
 import SearchIcon from '@mui/icons-material/Search';
 import CloseIcon from '@mui/icons-material/Close';
+
+const pulseOutline = keyframes`
+  0%, 100% { box-shadow: 0 0 0 0 rgba(196, 159, 120, 0.12); }
+  50% { box-shadow: 0 0 0 16px rgba(196, 159, 120, 0.08); }
+`;
 import { Post } from '../types';
 import PostList from '../components/PostList';
 import { PostListSkeleton } from '../components/SkeletonLoaders';
@@ -50,6 +57,8 @@ export default function SectionPage({ posts, isLoadingPosts }: SectionPageProps)
   const desktopSearchRef = useRef<HTMLInputElement | null>(null);
   const trimmedQuery = query.trim();
   const shouldUseApiSearch = trimmedQuery.length >= 2;
+  const hintStep = useMobileFeatureHint();
+  const searchHintActive = hintStep >= 2;
 
   useEffect(() => {
     if (!shouldUseApiSearch) {
@@ -229,8 +238,12 @@ export default function SectionPage({ posts, isLoadingPosts }: SectionPageProps)
             p: isSearchOpen ? 1 : 0,
             bgcolor: 'var(--batayan-card)',
             borderRadius: 3,
-            boxShadow: '0 12px 30px rgba(0,0,0,0.12)',
-            transition: 'all 0.2s ease',
+            border: searchHintActive ? '1px solid rgba(196, 159, 120, 0.45)' : '1px solid transparent',
+            boxShadow: searchHintActive ? '0 18px 38px rgba(0,0,0,0.18)' : '0 12px 30px rgba(0,0,0,0.12)',
+            opacity: 1,
+            transform: 'translateY(0) scale(1)',
+            animation: searchHintActive ? `${pulseOutline} 1.8s ease-in-out 0.15s infinite` : 'none',
+            transition: 'transform 0.35s ease 0.85s, box-shadow 0.35s ease 0.85s, border-color 0.35s ease 0.85s',
             width: isSearchOpen ? { xs: 'auto', sm: 320 } : 44,
             minWidth: isSearchOpen ? 0 : 44,
             maxWidth: 'calc(100vw - 32px)'

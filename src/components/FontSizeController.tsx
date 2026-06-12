@@ -1,6 +1,13 @@
+import { keyframes } from '@emotion/react';
 import { Box, Paper, Typography, Slider, IconButton, ClickAwayListener } from '@mui/material';
 import TextFieldsIcon from '@mui/icons-material/TextFields';
 import { useEffect, useRef, useState } from 'react';
+import { useMobileFeatureHint } from '../contexts/MobileFeatureHintContext';
+
+const pulseOutline = keyframes`
+  0%, 100% { box-shadow: 0 0 0 0 rgba(196, 159, 120, 0.14); }
+  50% { box-shadow: 0 0 0 10px rgba(196, 159, 120, 0.08); }
+`;
 
 interface FontSizeControllerProps {
   fontSize: number;
@@ -34,6 +41,9 @@ export default function FontSizeController({ fontSize, onChange }: FontSizeContr
     isSlidingRef.current = false;
     onChange(sliderValueRef.current);
   };
+
+  const hintStep = useMobileFeatureHint();
+  const fontHintActive = hintStep >= 1;
 
   return (
     <ClickAwayListener onClickAway={handleClickAway}>
@@ -76,7 +86,13 @@ export default function FontSizeController({ fontSize, onChange }: FontSizeContr
           <IconButton
             onClick={() => setIsExpanded(true)}
             size="small"
-            sx={{ color: 'inherit' }}
+            sx={{
+              color: 'inherit',
+              border: fontHintActive ? '1px solid rgba(196, 159, 120, 0.45)' : '1px solid transparent',
+              transform: 'translateY(0) scale(1)',
+              transition: 'transform 0.34s ease, border-color 0.34s ease',
+              animation: fontHintActive ? `${pulseOutline} 1.8s ease-in-out 0.2s infinite` : 'none'
+            }}
           >
             <TextFieldsIcon sx={{ fontSize: 20 }} />
           </IconButton>

@@ -1,3 +1,4 @@
+import { keyframes } from '@emotion/react';
 import { AppBar, Toolbar, Typography, Button, Box, MenuItem, Menu, IconButton, Tooltip } from '@mui/material';
 import MenuIcon from '@mui/icons-material/Menu';
 import SearchIcon from '@mui/icons-material/Search';
@@ -10,6 +11,12 @@ import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import logo from '../../img/logo.png';
 import { sectionMeta } from '../pages/SectionPage';
+import { useMobileFeatureHint } from '../contexts/MobileFeatureHintContext';
+
+const pulseOutline = keyframes`
+  0%, 100% { box-shadow: 0 0 0 0 rgba(196, 159, 120, 0.15); }
+  50% { box-shadow: 0 0 0 12px rgba(196, 159, 120, 0.08); }
+`;
 
 interface NavBarProps {
   // sections: string[];
@@ -22,6 +29,8 @@ interface NavBarProps {
 export default function NavBar({ user, onLogout, colorMode, onColorModeToggle }: NavBarProps) {
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const navIconColor = 'var(--batayan-text)';
+  const hintStep = useMobileFeatureHint();
+  const navHintActive = hintStep >= 0;
 
   return (
     <AppBar position="fixed" color="transparent" elevation={0} sx={{ borderBottom: '1px solid var(--batayan-border)', top: 0, left: 0, right: 0, zIndex: 1100, bgcolor: 'var(--batayan-nav-bg)', backdropFilter: 'blur(10px)', transition: 'background-color 0.28s ease, border-color 0.28s ease' }}>
@@ -76,7 +85,14 @@ export default function NavBar({ user, onLogout, colorMode, onColorModeToggle }:
           edge="end"
           aria-label="menu"
           onClick={(event) => setAnchorEl(event.currentTarget)}
-          sx={{ display: { md: 'none' }, color: navIconColor }}
+          sx={{
+            display: { md: 'none' },
+            color: navIconColor,
+            border: navHintActive ? '1px solid rgba(196, 159, 120, 0.45)' : '1px solid transparent',
+            transform: navHintActive ? 'translateY(0) scale(1)' : 'translateY(0) scale(1)',
+            transition: 'transform 0.36s ease, border-color 0.36s ease',
+            animation: navHintActive ? `${pulseOutline} 1.8s ease-in-out 0.2s infinite` : 'none'
+          }}
         >
           <MenuIcon />
         </IconButton>
