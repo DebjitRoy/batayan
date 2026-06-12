@@ -197,8 +197,17 @@ export default function PostPage({ posts, isLoadingPosts }: PostPageProps) {
   return (
     <Box sx={{ display: 'grid', gap: 4 }}>
       <Box sx={{ position: 'fixed', top: { xs: 64, md: 76 }, right: 16, zIndex: 1200, width: { xs: 'calc(100% - 32px)', sm: 320 }, maxWidth: '100%', px: 0, py: 0.5, bgcolor: 'transparent' }}>
-        <Box sx={{ width: '100%', height: 4, bgcolor: 'rgba(255,255,255,0.18)', borderRadius: 999, overflow: 'hidden' }}>
-          <Box sx={{ width: `${readProgress}%`, height: '100%', bgcolor: '#fff', transition: 'width 0.18s ease' }} />
+        <Box
+          sx={{
+            width: '100%',
+            height: 4,
+            bgcolor: (theme) => (theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.10)' : 'rgba(0,0,0,0.06)'),
+            borderRadius: 999,
+            overflow: 'hidden',
+            boxShadow: '0 2px 8px rgba(0,0,0,0.15)'
+          }}
+        >
+          <Box sx={{ width: `${readProgress}%`, height: '100%', bgcolor: 'var(--batayan-text)', transition: 'width 0.18s ease' }} />
         </Box>
       </Box>
       {error && <Alert severity="warning">{error}</Alert>}

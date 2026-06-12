@@ -1,6 +1,6 @@
 import { Box, Paper, Typography, Slider, IconButton, ClickAwayListener } from '@mui/material';
 import TextFieldsIcon from '@mui/icons-material/TextFields';
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 interface FontSizeControllerProps {
   fontSize: number;
@@ -9,9 +9,30 @@ interface FontSizeControllerProps {
 
 export default function FontSizeController({ fontSize, onChange }: FontSizeControllerProps) {
   const [isExpanded, setIsExpanded] = useState(false);
+  const [sliderValue, setSliderValue] = useState(fontSize);
+  const isSlidingRef = useRef(false);
+  const sliderValueRef = useRef(fontSize);
+
+  useEffect(() => {
+    if (isSlidingRef.current) return;
+    setSliderValue(fontSize);
+    sliderValueRef.current = fontSize;
+  }, [fontSize]);
 
   const handleClickAway = () => {
     setIsExpanded(false);
+  };
+
+  const handleSliderChange = (_: Event, value: number | number[]) => {
+    const nextValue = Array.isArray(value) ? value[0] : value;
+    isSlidingRef.current = true;
+    sliderValueRef.current = nextValue;
+    setSliderValue(nextValue);
+  };
+
+  const handleSliderCommit = () => {
+    isSlidingRef.current = false;
+    onChange(sliderValueRef.current);
   };
 
   return (
@@ -39,11 +60,12 @@ export default function FontSizeController({ fontSize, onChange }: FontSizeContr
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, px: 0.5 }}>
             <Typography sx={{ fontWeight: 700, fontSize: 12 }}>S</Typography>
             <Slider
-              value={fontSize}
+              value={sliderValue}
               min={14}
               max={22}
               step={1}
-              onChange={(_, value) => onChange(Array.isArray(value) ? value[0] : value)}
+              onChange={handleSliderChange}
+              onChangeCommitted={handleSliderCommit}
               valueLabelDisplay="auto"
               size="small"
               sx={{ width: 120 }}
@@ -65,11 +87,12 @@ export default function FontSizeController({ fontSize, onChange }: FontSizeContr
       <Box sx={{ display: { xs: 'none', md: 'flex' }, alignItems: 'center', gap: 1, px: 0.5 }}>
         <Typography sx={{ fontWeight: 700, fontSize: 12 }}>S</Typography>
         <Slider
-          value={fontSize}
+          value={sliderValue}
           min={14}
           max={22}
           step={1}
-          onChange={(_, value) => onChange(Array.isArray(value) ? value[0] : value)}
+          onChange={handleSliderChange}
+          onChangeCommitted={handleSliderCommit}
           valueLabelDisplay="auto"
           size="small"
           sx={{ width: 140 }}

@@ -4,14 +4,14 @@ html, body, #root {
 }
 
 :root {
-  --batayan-bg: #F4EFE7;
-  --batayan-text: #2E1D14;
-  --batayan-muted: #5A4639;
-  --batayan-accent: #8B6B55;
-  --batayan-card: #FFFFFF;
-  --batayan-pane: #F4EFE7;
-  --batayan-nav-bg: #F4EFE7;
-  --batayan-border: rgba(46, 29, 20, 0.12);
+  --batayan-bg: #12100F;
+  --batayan-text: #EDE6DE;
+  --batayan-muted: #BFB3A8;
+  --batayan-accent: #C49F78;
+  --batayan-card: #1A1615;
+  --batayan-pane: #151312;
+  --batayan-nav-bg: rgba(18, 16, 15, 0.96);
+  --batayan-border: rgba(255, 255, 255, 0.06);
 }
 
 :root[data-theme='light'] {
