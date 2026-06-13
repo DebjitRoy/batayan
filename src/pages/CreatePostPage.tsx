@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Alert, Box, Button, TextField, Typography, Paper, Stack, IconButton, Select, MenuItem } from '@mui/material';
 import DeleteIcon from '@mui/icons-material/Delete';
-import { CreatePostInput } from '../services/postsApi';
+import { CreatePostInput, normalizePostType } from '../services/postsApi';
 import { Post } from '../types';
 
 interface CreatePostPageProps {
@@ -77,6 +77,7 @@ const buildSectionsState = (post?: Post) => {
 };
 
 export default function CreatePostPage({ onCreate, editingPost }: CreatePostPageProps) {
+  console.log('editingPost', editingPost);
   const isEditMode = Boolean(editingPost);
   const [title, setTitle] = useState(editingPost?.title ?? '');
   const [summary, setSummary] = useState(editingPost?.summary ?? '');
@@ -84,8 +85,7 @@ export default function CreatePostPage({ onCreate, editingPost }: CreatePostPage
   const [heroFile, setHeroFile] = useState<File | null>(null);
   const [heroImageError, setHeroImageError] = useState('');
   const [sectionImageErrors, setSectionImageErrors] = useState<Record<string, string>>({});
-  const [section, setSection] = useState(editingPost?.section ?? 'travel');
-  const [type, setType] = useState(editingPost?.type ?? editingPost?.section ?? 'travel');
+  const [postType, setPostType] = useState(normalizePostType(editingPost?.type ?? editingPost?.section) ?? 'travel');
   const [postedDate, setPostedDate] = useState(editingPost?.postedDate ?? new Date().toISOString().slice(0, 10));
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState('');
@@ -101,8 +101,7 @@ export default function CreatePostPage({ onCreate, editingPost }: CreatePostPage
     setSummary(editingPost.summary);
     setHeroImage(editingPost.heroImage);
     setHeroFile(null);
-    setSection(editingPost.section);
-    setType(editingPost.type ?? editingPost.section);
+    setPostType(normalizePostType(editingPost.type ?? editingPost.section) ?? 'travel');
     setPostedDate(editingPost.postedDate);
     setSectionsState(buildSectionsState(editingPost));
   }, [editingPost]);
@@ -112,10 +111,10 @@ export default function CreatePostPage({ onCreate, editingPost }: CreatePostPage
 
     const newPost: CreatePostInput = {
       title,
-      postType: type || section,
+      postType: postType,
       gist: summary,
       heroImageFile: heroFile ?? undefined,
-      searchBy: [section, title],
+      searchBy: [postType, title],
       additionalInfo: '',
       content: sectionsState.map((s) => {
         let video = s.videoLink ?? '';
@@ -213,7 +212,7 @@ export default function CreatePostPage({ onCreate, editingPost }: CreatePostPage
           FormHelperTextProps={{ sx: { textAlign: 'right' } }}
           fullWidth
         />
-        <Select label="বিভাগ" value={section} onChange={(event) => setSection(event.target.value)} fullWidth>
+        <Select label="বিভাগ" value={postType} onChange={(event) => setPostType(event.target.value)} fullWidth>
           {Object.entries(postCategories).map(([key, value]) => (
             <MenuItem key={key} value={key}>
               {value}
@@ -269,8 +268,6 @@ export default function CreatePostPage({ onCreate, editingPost }: CreatePostPage
           </Box>
         </Box>
 
-       
-        <TextField label="ধরন" value={type} onChange={(event) => setType(event.target.value)} fullWidth />
         <TextField
           label="প্রকাশের তারিখ"
           type="date"

@@ -13,7 +13,7 @@ import AdminPage from './pages/AdminPage';
 import CreatePostPage from './pages/CreatePostPage';
 import { posts as initialPosts } from './data/posts';
 import { Post } from './types';
-import { CreatePostInput, createPost, deletePost, fetchPosts, loginAuthor } from './services/postsApi';
+import { CreatePostInput, createPost, deletePost, fetchPosts, loginAuthor, updatePost } from './services/postsApi';
 
 function App() {
   const [posts, setPosts] = useState<Post[]>(initialPosts);
@@ -43,10 +43,17 @@ function App() {
     navigate('/admin');
   };
 
-  const handleCreatePost = async (newPost: CreatePostInput) => {
+  const handleSavePost = async (newPost: CreatePostInput) => {
     if (!user) return;
-    const createdPost = await createPost(newPost, user.token);
-    setPosts((current) => [createdPost, ...current]);
+
+    if (editingPost) {
+      const updatedPost = await updatePost(editingPost.id, newPost, user.token);
+      setPosts((current) => current.map((post) => (post.id === updatedPost.id ? updatedPost : post)));
+    } else {
+      const createdPost = await createPost(newPost, user.token);
+      setPosts((current) => [createdPost, ...current]);
+    }
+
     navigate('/admin');
   };
 
@@ -132,7 +139,7 @@ function App() {
               />
               <Route
                 path="/create"
-                element={user ? <CreatePostPage onCreate={handleCreatePost} editingPost={editingPost} /> : <Navigate to="/login" replace />}
+                element={user ? <CreatePostPage onCreate={handleSavePost} editingPost={editingPost} /> : <Navigate to="/login" replace />}
               />
               <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>

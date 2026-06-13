@@ -372,6 +372,61 @@ export async function createPost(input: CreatePostInput, token: string): Promise
   return mapPost(currentPost);
 }
 
+export async function updatePost(postId: string, input: CreatePostInput, token: string): Promise<Post> {
+  const updatedPost = await requestJson<ApiPost>(`/posts/${postId}`, {
+    method: 'PUT',
+    headers: authHeaders(token),
+    body: JSON.stringify({
+      title: input.title,
+      postType: normalizePostType(input.postType),
+      gist: input.gist,
+      content: input.content.map((section) => ({
+        header: section.header,
+        content: section.content,
+        image: '',
+        imgDescription: section.imgDescription ?? '',
+        video: section.video ?? '',
+        videoDescription: section.videoDescription ?? ''
+      })),
+      searchBy: input.searchBy,
+      additionalInfo: input.additionalInfo ?? ''
+    })
+  });
+
+  let currentPost = updatedPost;
+
+  if (input.heroImageFile) {
+    const uploadResponse = await requestJson<{ imageUrl: string; post: ApiPost }>(`/posts/${postId}/upload`, {
+      method: 'PUT',
+      headers: authHeaders(token),
+      body: JSON.stringify({
+        fileName: input.heroImageFile.name,
+        contentType: input.heroImageFile.type,
+        dataBase64: await fileToBase64(input.heroImageFile)
+      })
+    });
+    currentPost = uploadResponse.post;
+  }
+
+  for (const [index, section] of input.content.entries()) {
+    const sectionId = currentPost.content?.[index]?._id;
+    if (!section.imageFile || !sectionId) continue;
+
+    const uploadResponse = await requestJson<{ imageUrl: string; post: ApiPost }>(`/posts/${postId}/sectionupload/${sectionId}`, {
+      method: 'PUT',
+      headers: authHeaders(token),
+      body: JSON.stringify({
+        fileName: section.imageFile.name,
+        contentType: section.imageFile.type,
+        dataBase64: await fileToBase64(section.imageFile)
+      })
+    });
+    currentPost = uploadResponse.post;
+  }
+
+  return mapPost(currentPost);
+}
+
 export async function deletePost(postId: string, token: string) {
   return requestJson<{ deleted: boolean; id: string }>(`/posts/${postId}`, {
     method: 'DELETE',
