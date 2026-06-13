@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Alert, Box, Button, Paper, TextField, Typography } from '@mui/material';
 
 interface LoginPageProps {
@@ -6,6 +7,7 @@ interface LoginPageProps {
 }
 
 export default function LoginPage({ onLogin }: LoginPageProps) {
+  const navigate = useNavigate();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -20,6 +22,7 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
     setError('');
     try {
       await onLogin(email.trim(), password);
+      navigate('/admin');
     } catch {
       setError('Login failed. Please check your email and password.');
     } finally {

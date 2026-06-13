@@ -1,10 +1,12 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Alert, Box, Button, TextField, Typography, Paper, Stack, IconButton, Select, MenuItem } from '@mui/material';
 import DeleteIcon from '@mui/icons-material/Delete';
 import { CreatePostInput } from '../services/postsApi';
+import { Post } from '../types';
 
 interface CreatePostPageProps {
   onCreate: (post: CreatePostInput) => Promise<void>;
+  editingPost?: Post;
 }
 
 const TITLE_MAX_LENGTH = 100;
@@ -12,20 +14,12 @@ const SUMMARY_MAX_LENGTH = 500;
 const IMAGE_MAX_SIZE_BYTES = 300 * 1024;
 const IMAGE_MAX_SIZE_LABEL = '300KB';
 
-export default function CreatePostPage({ onCreate }: CreatePostPageProps) {
-  const [title, setTitle] = useState('');
-  const [summary, setSummary] = useState('');
-  const [heroImage, setHeroImage] = useState('');
-  const [heroFile, setHeroFile] = useState<File | null>(null);
-  const [heroImageError, setHeroImageError] = useState('');
-  const [sectionImageErrors, setSectionImageErrors] = useState<Record<string, string>>({});
-  const [section, setSection] = useState('travel');
-  const [type, setType] = useState('travel');
-  const [postedDate, setPostedDate] = useState(new Date().toISOString().slice(0, 10));
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [submitError, setSubmitError] = useState('');
+const buildSectionsState = (post?: Post) => {
+  if (!post) {
+    return [{ id: `sec-${Date.now()}`, header: '', body: '', imageFile: null }];
+  }
 
-  const [sectionsState, setSectionsState] = useState<{
+  const sections: Array<{
     id: string;
     header: string;
     body: string;
@@ -34,16 +28,93 @@ export default function CreatePostPage({ onCreate }: CreatePostPageProps) {
     imageCaption?: string;
     videoLink?: string;
     videoCaption?: string;
-  }[]>([]);
+  }> = [];
+
+  for (let index = 0; index < post.sections.length; index += 1) {
+    const section = post.sections[index];
+    if (section.type === 'text') {
+      const next = post.sections[index + 1];
+      if (next?.type === 'text') {
+        sections.push({
+          id: `sec-${Date.now()}-${index}`,
+          header: section.content,
+          body: next.content,
+          imageFile: null
+        });
+        index += 1;
+      } else {
+        sections.push({
+          id: `sec-${Date.now()}-${index}`,
+          header: '',
+          body: section.content,
+          imageFile: null
+        });
+      }
+    } else if (section.type === 'image') {
+      sections.push({
+        id: `sec-${Date.now()}-${index}`,
+        header: '',
+        body: '',
+        imageFile: null,
+        imagePreview: section.content,
+        imageCaption: section.caption
+      });
+    } else if (section.type === 'video') {
+      sections.push({
+        id: `sec-${Date.now()}-${index}`,
+        header: '',
+        body: '',
+        imageFile: null,
+        videoLink: section.content,
+        videoCaption: section.caption
+      });
+    }
+  }
+
+  return sections.length
+    ? sections
+    : [{ id: `sec-${Date.now()}`, header: '', body: '', imageFile: null }];
+};
+
+export default function CreatePostPage({ onCreate, editingPost }: CreatePostPageProps) {
+  const isEditMode = Boolean(editingPost);
+  const [title, setTitle] = useState(editingPost?.title ?? '');
+  const [summary, setSummary] = useState(editingPost?.summary ?? '');
+  const [heroImage, setHeroImage] = useState(editingPost?.heroImage ?? '');
+  const [heroFile, setHeroFile] = useState<File | null>(null);
+  const [heroImageError, setHeroImageError] = useState('');
+  const [sectionImageErrors, setSectionImageErrors] = useState<Record<string, string>>({});
+  const [section, setSection] = useState(editingPost?.section ?? 'travel');
+  const [type, setType] = useState(editingPost?.type ?? editingPost?.section ?? 'travel');
+  const [postedDate, setPostedDate] = useState(editingPost?.postedDate ?? new Date().toISOString().slice(0, 10));
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState('');
+
+  const [sectionsState, setSectionsState] = useState(buildSectionsState(editingPost));
+
+  useEffect(() => {
+    if (!editingPost) {
+      return;
+    }
+
+    setTitle(editingPost.title);
+    setSummary(editingPost.summary);
+    setHeroImage(editingPost.heroImage);
+    setHeroFile(null);
+    setSection(editingPost.section);
+    setType(editingPost.type ?? editingPost.section);
+    setPostedDate(editingPost.postedDate);
+    setSectionsState(buildSectionsState(editingPost));
+  }, [editingPost]);
 
   const submit = async () => {
-    if (!title || !summary || !heroFile) return;
+    if (!title || !summary || (!heroFile && !heroImage)) return;
 
     const newPost: CreatePostInput = {
       title,
       postType: type || section,
       gist: summary,
-      heroImageFile: heroFile,
+      heroImageFile: heroFile ?? undefined,
       searchBy: [section, title],
       additionalInfo: '',
       content: sectionsState.map((s) => {
@@ -129,7 +200,7 @@ export default function CreatePostPage({ onCreate }: CreatePostPageProps) {
   return (
     <Paper sx={{ p: 4, maxWidth: 760, mx: 'auto' }} elevation={3}>
       <Typography variant="h4" gutterBottom>
-        নতুন পোস্ট তৈরি করুন
+        {isEditMode ? 'পোস্ট সম্পাদনা করুন' : 'নতুন পোস্ট তৈরি করুন'}
       </Typography>
       <Stack spacing={3}>
         {submitError && <Alert severity="error">{submitError}</Alert>}
@@ -308,10 +379,11 @@ export default function CreatePostPage({ onCreate }: CreatePostPageProps) {
               </Paper>
             ))}
           </Stack>
+          <Button onClick={addSection}>নতুন সেকশন</Button>
         </Box>
 
-        <Button variant="contained" onClick={submit} disabled={!title || !summary || !heroFile || isSubmitting}>
-          পোস্ট তৈরি করুন
+        <Button variant="contained" onClick={submit} disabled={!title || !summary || (!heroFile && !heroImage) || isSubmitting}>
+          {isEditMode ? 'পরিবর্তন সংরক্ষণ করুন' : 'পোস্ট তৈরি করুন'}
         </Button>
       </Stack>
     </Paper>

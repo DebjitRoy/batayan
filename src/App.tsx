@@ -31,6 +31,12 @@ function App() {
     [posts]
   );
 
+  const editingPostId = useMemo(() => new URLSearchParams(location.search).get('edit'), [location.search]);
+  const editingPost = useMemo(
+    () => (editingPostId ? posts.find((post) => post.id === editingPostId) : undefined),
+    [editingPostId, posts]
+  );
+
   const handleLogin = async (email: string, password: string) => {
     const response = await loginAuthor(email, password);
     setUser({ name: response.user.name || response.user.email, token: response.token });
@@ -126,7 +132,7 @@ function App() {
               />
               <Route
                 path="/create"
-                element={user ? <CreatePostPage onCreate={handleCreatePost} /> : <Navigate to="/login" replace />}
+                element={user ? <CreatePostPage onCreate={handleCreatePost} editingPost={editingPost} /> : <Navigate to="/login" replace />}
               />
               <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>
