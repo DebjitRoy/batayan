@@ -18,6 +18,7 @@ interface ApiPostListItem {
   gist?: string;
   photoHero?: string;
   postType?: string;
+  status?: string;
   createdAt?: string;
   visited?: number;
   liked?: number;
@@ -225,6 +226,7 @@ const mapPost = (post: ApiPost): Post => {
     postedDate: normalizeDate(post.createdAt),
     section,
     type: post.postType ?? section,
+    status: post.status ?? 'published',
     tags: post.searchBy?.map((tag) => tag.trim()).filter(Boolean) ?? [],
     sections: mapSections(post),
     comments: []
@@ -266,7 +268,7 @@ const fileToBase64 = (file: File) =>
     reader.readAsDataURL(file);
   });
 
-export async function fetchPosts(limit = DEFAULT_LIST_LIMIT, postType?: string, search?: string): Promise<Post[]> {
+export async function fetchPosts(limit = DEFAULT_LIST_LIMIT, postType?: string, search?: string, status = 'published'): Promise<Post[]> {
   const normalizedPostType = normalizePostType(postType);
   const trimmedSearch = search?.trim();
   const query = new URLSearchParams({
@@ -281,8 +283,16 @@ export async function fetchPosts(limit = DEFAULT_LIST_LIMIT, postType?: string, 
     query.set('expanded', true.toString());
   }
 
+  if (status && status !== 'all') {
+    query.set('status', status);
+  }
+
   const response = await requestJson<ApiListResponse<ApiPostListItem>>(`/posts?${query.toString()}`);
-  const posts = response.items.map(mapPost);
+  let posts = response.items.map(mapPost);
+
+  if (status !== 'all') {
+    posts = posts.filter((post) => post.status === status);
+  }
 
   if (!normalizedPostType) {
     return posts;
@@ -324,6 +334,7 @@ export async function createPost(input: CreatePostInput, token: string): Promise
     body: JSON.stringify({
       title: input.title,
       postType: normalizePostType(input.postType),
+      status: 'draft',
       gist: input.gist,
       content: input.content.map((section) => ({
         header: section.header,
@@ -370,6 +381,16 @@ export async function createPost(input: CreatePostInput, token: string): Promise
   }
 
   return mapPost(currentPost);
+}
+
+export async function updatePostStatus(postId: string, status: string, token: string): Promise<Post> {
+  const updatedPost = await requestJson<ApiPost>(`/posts/${postId}/status`, {
+    method: 'PUT',
+    headers: authHeaders(token),
+    body: JSON.stringify({ status })
+  });
+
+  return mapPost(updatedPost);
 }
 
 export async function updatePost(postId: string, input: CreatePostInput, token: string): Promise<Post> {

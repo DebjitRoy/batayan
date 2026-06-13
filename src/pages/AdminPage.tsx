@@ -1,30 +1,56 @@
-import { useMemo, useState } from 'react';
-import { Box, Typography, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper, Button, IconButton, Tooltip, TextField, TableSortLabel, TablePagination } from '@mui/material';
+import { useEffect, useMemo, useState } from 'react';
+import { Box, Typography, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper, Button, IconButton, Tooltip, TextField, TableSortLabel, TablePagination, Select, MenuItem, Dialog, DialogTitle, DialogContent, DialogActions } from '@mui/material';
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
 import { Post } from '../types';
 import { Link } from 'react-router-dom';
+import { fetchPosts } from '../services/postsApi';
 
 interface AdminPageProps {
   posts: Post[];
   onDelete: (id: string) => Promise<void> | void;
+  onStatusChange: (id: string, status: string) => Promise<void> | void;
 }
 
-export default function AdminPage({ posts, onDelete }: AdminPageProps) {
+const statusOptions = ['draft', 'published', 'archived'] as const;
+
+export default function AdminPage({ posts, onDelete, onStatusChange }: AdminPageProps) {
   const [query, setQuery] = useState('');
   const [orderBy, setOrderBy] = useState<keyof Post | 'postedDate'>('postedDate');
   const [order, setOrder] = useState<'asc' | 'desc'>('desc');
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(10);
+  const [deleteTarget, setDeleteTarget] = useState<Post | null>(null);
+  const [adminPosts, setAdminPosts] = useState<Post[] | null>(null);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    fetchPosts(100, undefined, undefined, 'all')
+      .then((results) => {
+        if (!isMounted) return;
+        setAdminPosts(results);
+      })
+      .catch(() => {
+        if (!isMounted) return;
+        setAdminPosts(posts);
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [posts]);
+
+  const displayedPosts = adminPosts ?? posts;
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
-    if (!q) return posts.slice();
-    return posts.filter((p) => {
+    if (!q) return displayedPosts.slice();
+    return displayedPosts.filter((p) => {
       const hay = `${p.title} ${p.summary || ''} ${p.tags?.join(' ') || ''} ${p.section}`.toLowerCase();
       return hay.includes(q);
     });
-  }, [posts, query]);
+  }, [displayedPosts, query]);
 
   const sorted = useMemo(() => {
     const arr = filtered.slice();
@@ -49,6 +75,21 @@ export default function AdminPage({ posts, onDelete }: AdminPageProps) {
     setOrder(isAsc ? 'desc' : 'asc');
     setOrderBy(property);
     setPage(0);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (deleteTarget) {
+      await onDelete(deleteTarget.id);
+      setAdminPosts((current) => current?.filter((post) => post.id !== deleteTarget.id) ?? null);
+      setDeleteTarget(null);
+    }
+  };
+
+  const handleStatusChange = async (postId: string, status: string) => {
+    await onStatusChange(postId, status);
+    setAdminPosts((current) =>
+      current?.map((post) => (post.id === postId ? { ...post, status } : post)) ?? null
+    );
   };
 
   return (
@@ -83,6 +124,9 @@ export default function AdminPage({ posts, onDelete }: AdminPageProps) {
                   বিভাগ
                 </TableSortLabel>
               </TableCell>
+              <TableCell sx={{ bgcolor: 'var(--batayan-card)', fontWeight: 700, color: 'var(--batayan-text)', borderBottom: '2px solid rgba(0,0,0,0.06)' }}>
+                Status
+              </TableCell>
               <TableCell sx={{ bgcolor: 'var(--batayan-card)', fontWeight: 700, color: 'var(--batayan-text)', borderBottom: '2px solid rgba(0,0,0,0.06)' }} sortDirection={orderBy === 'postedDate' ? order : false}>
                 <TableSortLabel active={orderBy === 'postedDate'} direction={orderBy === 'postedDate' ? order : 'desc'} onClick={() => handleRequestSort('postedDate')}>
                   প্রকাশ
@@ -96,6 +140,20 @@ export default function AdminPage({ posts, onDelete }: AdminPageProps) {
               <TableRow key={post.id}>
                 <TableCell>{post.title}</TableCell>
                 <TableCell>{post.section}</TableCell>
+                <TableCell>
+                  <Select
+                    size="small"
+                    value={post.status ?? 'published'}
+                    onChange={(event) => handleStatusChange(post.id, event.target.value as string)}
+                    sx={{ minWidth: 140 }}
+                  >
+                    {statusOptions.map((status) => (
+                      <MenuItem key={status} value={status}>
+                        {status}
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </TableCell>
                 <TableCell>{post.postedDate}</TableCell>
                 <TableCell>
                   <Tooltip title="সম্পাদনা">
@@ -104,7 +162,7 @@ export default function AdminPage({ posts, onDelete }: AdminPageProps) {
                     </IconButton>
                   </Tooltip>
                   <Tooltip title="মুছে ফেলুন">
-                    <IconButton size="small" color="error" aria-label="delete" onClick={() => onDelete(post.id)}>
+                    <IconButton size="small" color="error" aria-label="delete" onClick={() => setDeleteTarget(post)}>
                       <DeleteIcon />
                     </IconButton>
                   </Tooltip>
@@ -123,6 +181,21 @@ export default function AdminPage({ posts, onDelete }: AdminPageProps) {
           rowsPerPageOptions={[5,10,25]}
         />
       </TableContainer>
+
+      <Dialog open={Boolean(deleteTarget)} onClose={() => setDeleteTarget(null)}>
+        <DialogTitle>আপনি কি নিশ্চিত?</DialogTitle>
+        <DialogContent>
+          <Typography>
+            {(deleteTarget?.title || 'এই পোস্ট')} মুছে ফেলতে চাইছেন? একাউন্ট থেকে এটি স্থায়ীভাবে মুছে যাবে।
+          </Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setDeleteTarget(null)}>বাতিল</Button>
+          <Button color="error" onClick={handleConfirmDelete} autoFocus>
+            মুছুন
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 }

@@ -13,7 +13,7 @@ import AdminPage from './pages/AdminPage';
 import CreatePostPage from './pages/CreatePostPage';
 import { posts as initialPosts } from './data/posts';
 import { Post } from './types';
-import { CreatePostInput, createPost, deletePost, fetchPosts, loginAuthor, updatePost } from './services/postsApi';
+import { CreatePostInput, createPost, deletePost, fetchPosts, loginAuthor, updatePost, updatePostStatus } from './services/postsApi';
 
 function App() {
   const [posts, setPosts] = useState<Post[]>(initialPosts);
@@ -62,6 +62,24 @@ function App() {
       await deletePost(id, user.token);
     }
     setPosts((current) => current.filter((post) => post.id !== id));
+  };
+
+  const handleUpdateStatus = async (postId: string, status: string) => {
+    if (!user) return;
+
+    const updatedPost = await updatePostStatus(postId, status, user.token);
+    setPosts((current) => {
+      const existing = current.find((post) => post.id === updatedPost.id);
+      if (!existing) {
+        return updatedPost.status === 'published' ? [updatedPost, ...current] : current;
+      }
+
+      if (updatedPost.status !== 'published') {
+        return current.filter((post) => post.id !== updatedPost.id);
+      }
+
+      return current.map((post) => (post.id === updatedPost.id ? updatedPost : post));
+    });
   };
 
   useEffect(() => {
@@ -135,7 +153,7 @@ function App() {
               <Route path="/login" element={<LoginPage onLogin={handleLogin} />} />
               <Route
                 path="/admin"
-                element={user ? <AdminPage posts={posts} onDelete={handleDelete} /> : <Navigate to="/login" replace />}
+                element={user ? <AdminPage posts={posts} onDelete={handleDelete} onStatusChange={handleUpdateStatus} /> : <Navigate to="/login" replace />}
               />
               <Route
                 path="/create"

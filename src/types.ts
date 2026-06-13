@@ -26,6 +26,7 @@ export interface Post {
   postedDate: string;
   section: string;
   type: string;
+  status?: string;
   series?: string;
   seriesIndex?: number;
   tags: string[];
