@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
-import { Alert, Box, Button, TextField, Typography, Paper, Stack, IconButton, Select, MenuItem } from '@mui/material';
+import { Alert, Box, Button, TextField, Typography, Paper, Stack, IconButton, Select, MenuItem, Checkbox, FormControlLabel } from '@mui/material';
 import DeleteIcon from '@mui/icons-material/Delete';
-import { CreatePostInput, normalizePostType } from '../services/postsApi';
+import { CreatePostInput, SeriesItem, fetchSeriesList, normalizePostType } from '../services/postsApi';
 import { Post } from '../types';
 
 interface CreatePostPageProps {
@@ -90,10 +90,28 @@ export default function CreatePostPage({ onCreate, editingPost }: CreatePostPage
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState('');
 
+  const [seriesEnabled, setSeriesEnabled] = useState(Boolean(editingPost?.series));
+  const [seriesMode, setSeriesMode] = useState<'existing' | 'new'>(editingPost?.series ? 'existing' : 'new');
+  const [seriesOptions, setSeriesOptions] = useState<SeriesItem[]>([]);
+  const [selectedSeriesId, setSelectedSeriesId] = useState(editingPost?.seriesId ?? '');
+  const [seriesPart, setSeriesPart] = useState(editingPost?.seriesIndex ?? 1);
+  const [newSeriesTitle, setNewSeriesTitle] = useState(editingPost?.series ?? '');
+  const [newSeriesDescription, setNewSeriesDescription] = useState('');
+  const [newSeriesType, setNewSeriesType] = useState(normalizePostType(editingPost?.type ?? editingPost?.section) ?? 'travel');
+  const [newSeriesTags, setNewSeriesTags] = useState(editingPost?.tags?.join(', ') ?? '');
+
   const [sectionsState, setSectionsState] = useState(buildSectionsState(editingPost));
 
   useEffect(() => {
     if (!editingPost) {
+      setSeriesEnabled(false);
+      setSeriesMode('new');
+      setSelectedSeriesId('');
+      setSeriesPart(1);
+      setNewSeriesTitle('');
+      setNewSeriesDescription('');
+      setNewSeriesType(normalizePostType(postType) ?? 'travel');
+      setNewSeriesTags('');
       return;
     }
 
@@ -104,10 +122,55 @@ export default function CreatePostPage({ onCreate, editingPost }: CreatePostPage
     setPostType(normalizePostType(editingPost.type ?? editingPost.section) ?? 'travel');
     setPostedDate(editingPost.postedDate);
     setSectionsState(buildSectionsState(editingPost));
+    setSeriesEnabled(Boolean(editingPost.series));
+    setSeriesMode(editingPost.series ? 'existing' : 'new');
+    setSelectedSeriesId(editingPost.seriesId ?? '');
+    setSeriesPart(editingPost.seriesIndex ?? 1);
+    setNewSeriesTitle(editingPost.series ?? '');
+    setNewSeriesDescription('');
+    setNewSeriesType(normalizePostType(editingPost.type ?? editingPost.section) ?? 'travel');
+    setNewSeriesTags(editingPost.tags?.join(', ') ?? '');
   }, [editingPost]);
 
+  useEffect(() => {
+    fetchSeriesList()
+      .then((items) => setSeriesOptions(items))
+      .catch(() => setSeriesOptions([]));
+  }, []);
+
+  useEffect(() => {
+    if (!editingPost?.series || seriesMode !== 'existing' || selectedSeriesId) {
+      return;
+    }
+
+    const matchedSeries = seriesOptions.find(
+      (series) => series.title.trim().toLowerCase() === editingPost.series?.trim().toLowerCase()
+    );
+
+    if (matchedSeries) {
+      setSelectedSeriesId(matchedSeries.id);
+    }
+  }, [editingPost, seriesMode, selectedSeriesId, seriesOptions]);
+
+  useEffect(() => {
+    if (seriesMode !== 'existing' || !selectedSeriesId) {
+      return;
+    }
+
+    const selectedSeries = seriesOptions.find((series) => series.id === selectedSeriesId);
+    if (!selectedSeries) {
+      return;
+    }
+
+    const editingSameSeries = editingPost?.seriesId === selectedSeriesId
+      || (!!editingPost?.series && selectedSeries.title.trim().toLowerCase() === editingPost.series.trim().toLowerCase());
+    setSeriesPart(editingSameSeries ? editingPost?.seriesIndex ?? 1 : selectedSeries.totalParts + 1);
+  }, [seriesMode, selectedSeriesId, seriesOptions, editingPost]);
+
+  const isSeriesValid = !seriesEnabled || (seriesMode === 'existing' ? Boolean(selectedSeriesId) : Boolean(newSeriesTitle.trim() && newSeriesDescription.trim()));
+
   const submit = async () => {
-    if (!title || !summary || (!heroFile && !heroImage)) return;
+    if (!title || !summary || (!heroFile && !heroImage) || !isSeriesValid) return;
 
     const newPost: CreatePostInput = {
       title,
@@ -131,6 +194,28 @@ export default function CreatePostPage({ onCreate, editingPost }: CreatePostPage
         };
       })
     };
+
+    if (seriesEnabled) {
+      if (seriesMode === 'existing' && selectedSeriesId) {
+        newPost.seriesId = selectedSeriesId;
+        newPost.seriesPart = seriesPart;
+      }
+
+      if (seriesMode === 'new') {
+        const tags = newSeriesTags
+          .split(',')
+          .map((tag) => tag.trim())
+          .filter(Boolean);
+
+        newPost.newSeries = {
+          title: newSeriesTitle.trim(),
+          description: newSeriesDescription.trim(),
+          postType: newSeriesType,
+          searchBy: tags.length ? tags : [newSeriesTitle.trim()]
+        };
+        newPost.seriesPart = seriesPart;
+      }
+    }
 
     setIsSubmitting(true);
     setSubmitError('');
@@ -230,6 +315,106 @@ export default function CreatePostPage({ onCreate, editingPost }: CreatePostPage
           rows={3}
           fullWidth
         />
+
+        <Box>
+          <FormControlLabel
+            control={
+              <Checkbox
+                checked={seriesEnabled}
+                onChange={(event) => setSeriesEnabled(event.target.checked)}
+              />
+            }
+            label="এই পোস্ট সিরিজের অংশ"
+          />
+
+          {seriesEnabled && (
+            <Paper sx={{ p: 2, border: '1px solid rgba(0,0,0,0.12)', bgcolor: 'background.default' }}>
+              <Typography variant="subtitle1" sx={{ mb: 1 }}>
+                সিরিজ নির্বাচন করুন
+              </Typography>
+              <Select
+                value={seriesMode}
+                onChange={(event) => setSeriesMode(event.target.value as 'existing' | 'new')}
+                fullWidth
+                sx={{ mb: 2 }}
+              >
+                <MenuItem value="existing">Existing series</MenuItem>
+                <MenuItem value="new">New series</MenuItem>
+              </Select>
+
+              {seriesMode === 'existing' ? (
+                <Box>
+                  <Select
+                    value={selectedSeriesId}
+                    onChange={(event) => setSelectedSeriesId(event.target.value)}
+                    fullWidth
+                    displayEmpty
+                  >
+                    <MenuItem value="">Select series</MenuItem>
+                    {seriesOptions.map((series) => (
+                      <MenuItem key={series.id} value={series.id}>
+                        {series.title}
+                      </MenuItem>
+                    ))}
+                  </Select>
+
+                  <TextField
+                    label="Series part number"
+                    type="number"
+                    value={seriesPart}
+                    onChange={(event) => setSeriesPart(Math.max(1, Number(event.target.value)))}
+                    inputProps={{ min: 1 }}
+                    fullWidth
+                    sx={{ mt: 2 }}
+                    helperText="Existing series defaults to last part + 1"
+                  />
+                </Box>
+              ) : (
+                <Stack spacing={2}>
+                  <TextField
+                    label="Series title"
+                    value={newSeriesTitle}
+                    onChange={(event) => setNewSeriesTitle(event.target.value)}
+                    fullWidth
+                  />
+                  <TextField
+                    label="Series description"
+                    value={newSeriesDescription}
+                    onChange={(event) => setNewSeriesDescription(event.target.value)}
+                    multiline
+                    rows={2}
+                    fullWidth
+                  />
+                  <Select
+                    value={newSeriesType}
+                    onChange={(event) => setNewSeriesType(event.target.value)}
+                    fullWidth
+                  >
+                    {Object.entries(postCategories).map(([key, value]) => (
+                      <MenuItem key={key} value={key}>
+                        {value}
+                      </MenuItem>
+                    ))}
+                  </Select>
+                  <TextField
+                    label="Search tags (comma separated)"
+                    value={newSeriesTags}
+                    onChange={(event) => setNewSeriesTags(event.target.value)}
+                    fullWidth
+                  />
+                  <TextField
+                    label="Series part number"
+                    type="number"
+                    value={seriesPart}
+                    onChange={(event) => setSeriesPart(Math.max(1, Number(event.target.value)))}
+                    inputProps={{ min: 1 }}
+                    fullWidth
+                  />
+                </Stack>
+              )}
+            </Paper>
+          )}
+        </Box>
 
         <Box>
           <Typography sx={{ mb: 1 }}>হিরো ইমেজ (ব্রাউজ বা ড্র্যাগ-অ্যান্ড-ড্রপ)</Typography>
@@ -379,7 +564,7 @@ export default function CreatePostPage({ onCreate, editingPost }: CreatePostPage
           <Button onClick={addSection}>নতুন সেকশন</Button>
         </Box>
 
-        <Button variant="contained" onClick={submit} disabled={!title || !summary || (!heroFile && !heroImage) || isSubmitting}>
+        <Button variant="contained" onClick={submit} disabled={!title || !summary || (!heroFile && !heroImage) || isSubmitting || !isSeriesValid}>
           {isEditMode ? 'পরিবর্তন সংরক্ষণ করুন' : 'পোস্ট তৈরি করুন'}
         </Button>
       </Stack>

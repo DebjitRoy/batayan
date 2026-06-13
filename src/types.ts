@@ -28,6 +28,7 @@ export interface Post {
   type: string;
   status?: string;
   series?: string;
+  seriesId?: string;
   seriesIndex?: number;
   tags: string[];
   sections: ContentSection[];

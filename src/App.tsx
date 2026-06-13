@@ -13,7 +13,7 @@ import AdminPage from './pages/AdminPage';
 import CreatePostPage from './pages/CreatePostPage';
 import { posts as initialPosts } from './data/posts';
 import { Post } from './types';
-import { CreatePostInput, createPost, deletePost, fetchPosts, loginAuthor, updatePost, updatePostStatus } from './services/postsApi';
+import { CreatePostInput, createPost, deletePost, fetchPost, fetchPosts, loginAuthor, updatePost, updatePostStatus } from './services/postsApi';
 
 function App() {
   const [posts, setPosts] = useState<Post[]>(initialPosts);
@@ -31,11 +31,42 @@ function App() {
     [posts]
   );
 
+  const [editingPostFromApi, setEditingPostFromApi] = useState<Post | undefined>(undefined);
   const editingPostId = useMemo(() => new URLSearchParams(location.search).get('edit'), [location.search]);
-  const editingPost = useMemo(
-    () => (editingPostId ? posts.find((post) => post.id === editingPostId) : undefined),
-    [editingPostId, posts]
-  );
+  const editingPost = useMemo(() => {
+    if (!editingPostId) return undefined;
+    return posts.find((post) => post.id === editingPostId) ?? editingPostFromApi;
+  }, [editingPostId, posts, editingPostFromApi]);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    if (!editingPostId) {
+      setEditingPostFromApi(undefined);
+      return;
+    }
+
+    const localPost = posts.find((post) => post.id === editingPostId);
+    if (localPost) {
+      return;
+    }
+
+    fetchPost(editingPostId)
+      .then((post) => {
+        if (isMounted) {
+          setEditingPostFromApi(post);
+        }
+      })
+      .catch(() => {
+        if (isMounted) {
+          setEditingPostFromApi(undefined);
+        }
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [editingPostId, posts]);
 
   const handleLogin = async (email: string, password: string) => {
     const response = await loginAuthor(email, password);

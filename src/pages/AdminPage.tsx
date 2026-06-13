@@ -26,7 +26,7 @@ export default function AdminPage({ posts, onDelete, onStatusChange }: AdminPage
   useEffect(() => {
     let isMounted = true;
 
-    fetchPosts(100, undefined, undefined, 'all')
+    fetchPosts(100, undefined, undefined, 'all', true)
       .then((results) => {
         if (!isMounted) return;
         setAdminPosts(results);
@@ -125,6 +125,12 @@ export default function AdminPage({ posts, onDelete, onStatusChange }: AdminPage
                 </TableSortLabel>
               </TableCell>
               <TableCell sx={{ bgcolor: 'var(--batayan-card)', fontWeight: 700, color: 'var(--batayan-text)', borderBottom: '2px solid rgba(0,0,0,0.06)' }}>
+                সিরিজ
+              </TableCell>
+              <TableCell sx={{ bgcolor: 'var(--batayan-card)', fontWeight: 700, color: 'var(--batayan-text)', borderBottom: '2px solid rgba(0,0,0,0.06)' }}>
+                Part
+              </TableCell>
+              <TableCell sx={{ bgcolor: 'var(--batayan-card)', fontWeight: 700, color: 'var(--batayan-text)', borderBottom: '2px solid rgba(0,0,0,0.06)' }}>
                 Status
               </TableCell>
               <TableCell sx={{ bgcolor: 'var(--batayan-card)', fontWeight: 700, color: 'var(--batayan-text)', borderBottom: '2px solid rgba(0,0,0,0.06)' }} sortDirection={orderBy === 'postedDate' ? order : false}>
@@ -140,6 +146,8 @@ export default function AdminPage({ posts, onDelete, onStatusChange }: AdminPage
               <TableRow key={post.id}>
                 <TableCell>{post.title}</TableCell>
                 <TableCell>{post.section}</TableCell>
+                <TableCell>{post.series || '-'}</TableCell>
+                <TableCell>{post.seriesIndex ?? '-'}</TableCell>
                 <TableCell>
                   <Select
                     size="small"

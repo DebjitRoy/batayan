@@ -30,6 +30,15 @@ interface ApiPostListItem {
   isSeries?: boolean;
 }
 
+interface ApiSeries {
+  _id: string;
+  title?: string;
+  description?: string;
+  postType?: string;
+  searchBy?: string[];
+  totalParts?: number;
+}
+
 interface ApiContentBlock {
   _id: string;
   header?: string | null;
@@ -75,6 +84,22 @@ export interface CreatePostSectionInput {
   videoDescription?: string;
 }
 
+export interface CreateSeriesInput {
+  title: string;
+  description: string;
+  postType: string;
+  searchBy: string[];
+}
+
+export interface SeriesItem {
+  id: string;
+  title: string;
+  description: string;
+  postType: string;
+  searchBy: string[];
+  totalParts: number;
+}
+
 export interface CreatePostInput {
   title: string;
   postType: string;
@@ -83,6 +108,9 @@ export interface CreatePostInput {
   searchBy: string[];
   additionalInfo?: string;
   heroImageFile?: File | null;
+  seriesId?: string;
+  seriesPart?: number;
+  newSeries?: CreateSeriesInput;
 }
 
 export interface CreateCommentInput {
@@ -215,6 +243,7 @@ const mapSections = (post: ApiPost): ContentSection[] => {
 
 const mapPost = (post: ApiPost): Post => {
   const section = mapPostType(post.postType);
+  const seriesData = post.series && typeof post.series === 'object' ? (post.series as any) : undefined;
 
   return {
     id: post._id,
@@ -227,6 +256,9 @@ const mapPost = (post: ApiPost): Post => {
     section,
     type: post.postType ?? section,
     status: post.status ?? 'published',
+    series: seriesData?.title ?? (typeof post.series === 'string' ? post.series : undefined),
+    seriesId: seriesData?._id,
+    seriesIndex: seriesData?.part,
     tags: post.searchBy?.map((tag) => tag.trim()).filter(Boolean) ?? [],
     sections: mapSections(post),
     comments: []
@@ -257,6 +289,33 @@ async function requestJson<T>(path: string, init?: RequestInit): Promise<T> {
   return response.json() as Promise<T>;
 }
 
+const mapSeries = (series: ApiSeries): SeriesItem => ({
+  id: series._id,
+  title: series.title ?? 'Untitled',
+  description: series.description ?? '',
+  postType: series.postType ?? 'miscl',
+  searchBy: series.searchBy ?? [],
+  totalParts: series.totalParts ?? 0
+});
+
+export async function fetchSeriesList(): Promise<SeriesItem[]> {
+  const response = await requestJson<ApiListResponse<ApiSeries>>('/series');
+  return response.items.map(mapSeries);
+}
+
+export async function createSeries(input: CreateSeriesInput, token: string): Promise<ApiSeries> {
+  return requestJson<ApiSeries>('/series', {
+    method: 'POST',
+    headers: authHeaders(token),
+    body: JSON.stringify({
+      title: input.title,
+      description: input.description,
+      postType: normalizePostType(input.postType),
+      searchBy: input.searchBy
+    })
+  });
+}
+
 const fileToBase64 = (file: File) =>
   new Promise<string>((resolve, reject) => {
     const reader = new FileReader();
@@ -268,7 +327,13 @@ const fileToBase64 = (file: File) =>
     reader.readAsDataURL(file);
   });
 
-export async function fetchPosts(limit = DEFAULT_LIST_LIMIT, postType?: string, search?: string, status = 'published'): Promise<Post[]> {
+export async function fetchPosts(
+  limit = DEFAULT_LIST_LIMIT,
+  postType?: string,
+  search?: string,
+  status = 'published',
+  expanded = false
+): Promise<Post[]> {
   const normalizedPostType = normalizePostType(postType);
   const trimmedSearch = search?.trim();
   const query = new URLSearchParams({
@@ -280,6 +345,10 @@ export async function fetchPosts(limit = DEFAULT_LIST_LIMIT, postType?: string, 
 
   if (trimmedSearch && trimmedSearch.length >= 2) {
     query.set('search', trimmedSearch);
+    query.set('expanded', true.toString());
+  }
+
+  if (expanded) {
     query.set('expanded', true.toString());
   }
 
@@ -328,6 +397,13 @@ export async function loginAuthor(email: string, password: string) {
 }
 
 export async function createPost(input: CreatePostInput, token: string): Promise<Post> {
+  let seriesId = input.seriesId;
+
+  if (input.newSeries) {
+    const createdSeries = await createSeries(input.newSeries, token);
+    seriesId = createdSeries._id;
+  }
+
   const createdPost = await requestJson<ApiPost>('/posts', {
     method: 'POST',
     headers: authHeaders(token),
@@ -345,7 +421,8 @@ export async function createPost(input: CreatePostInput, token: string): Promise
         videoDescription: section.videoDescription ?? ''
       })),
       searchBy: input.searchBy,
-      additionalInfo: input.additionalInfo ?? ''
+      additionalInfo: input.additionalInfo ?? '',
+      ...(seriesId ? { series: { seriesId, part: input.seriesPart ?? 1 } } : {})
     })
   });
 
@@ -394,6 +471,13 @@ export async function updatePostStatus(postId: string, status: string, token: st
 }
 
 export async function updatePost(postId: string, input: CreatePostInput, token: string): Promise<Post> {
+  let seriesId = input.seriesId;
+
+  if (input.newSeries) {
+    const createdSeries = await createSeries(input.newSeries, token);
+    seriesId = createdSeries._id;
+  }
+
   const updatedPost = await requestJson<ApiPost>(`/posts/${postId}`, {
     method: 'PUT',
     headers: authHeaders(token),
@@ -410,7 +494,8 @@ export async function updatePost(postId: string, input: CreatePostInput, token: 
         videoDescription: section.videoDescription ?? ''
       })),
       searchBy: input.searchBy,
-      additionalInfo: input.additionalInfo ?? ''
+      additionalInfo: input.additionalInfo ?? '',
+      ...(seriesId ? { series: { seriesId, part: input.seriesPart ?? 1 } } : {})
     })
   });
 
