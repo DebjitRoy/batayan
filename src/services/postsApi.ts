@@ -38,6 +38,13 @@ interface ApiSeries {
   searchBy?: string[];
   totalParts?: number;
 }
+interface ApiSeriesDetail extends ApiSeries {
+  posts?: Array<{
+    postId: string;
+    title?: string;
+    part?: number;
+  }>;
+}
 
 interface ApiContentBlock {
   _id: string;
@@ -256,9 +263,7 @@ const mapPost = (post: ApiPost): Post => {
     section,
     type: post.postType ?? section,
     status: post.status ?? 'published',
-    series: seriesData?.title ?? (typeof post.series === 'string' ? post.series : undefined),
-    seriesId: seriesData?._id,
-    seriesIndex: seriesData?.part,
+    series: seriesData,
     tags: post.searchBy?.map((tag) => tag.trim()).filter(Boolean) ?? [],
     sections: mapSections(post),
     comments: []
@@ -314,6 +319,11 @@ export async function createSeries(input: CreateSeriesInput, token: string): Pro
       searchBy: input.searchBy
     })
   });
+}
+
+export async function fetchSeries(seriesId: string): Promise<ApiSeriesDetail> {
+  const response = await requestJson<ApiSeriesDetail>(`/series/${seriesId}`);
+  return response;
 }
 
 const fileToBase64 = (file: File) =>

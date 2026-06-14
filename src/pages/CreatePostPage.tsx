@@ -93,9 +93,9 @@ export default function CreatePostPage({ onCreate, editingPost }: CreatePostPage
   const [seriesEnabled, setSeriesEnabled] = useState(Boolean(editingPost?.series));
   const [seriesMode, setSeriesMode] = useState<'existing' | 'new'>(editingPost?.series ? 'existing' : 'new');
   const [seriesOptions, setSeriesOptions] = useState<SeriesItem[]>([]);
-  const [selectedSeriesId, setSelectedSeriesId] = useState(editingPost?.seriesId ?? '');
-  const [seriesPart, setSeriesPart] = useState(editingPost?.seriesIndex ?? 1);
-  const [newSeriesTitle, setNewSeriesTitle] = useState(editingPost?.series ?? '');
+  const [selectedSeriesId, setSelectedSeriesId] = useState(editingPost?.series?.seriesId ?? '');
+  const [seriesPart, setSeriesPart] = useState(editingPost?.series?.part ?? 1);
+  const [newSeriesTitle, setNewSeriesTitle] = useState(editingPost?.series?.title ?? '');
   const [newSeriesDescription, setNewSeriesDescription] = useState('');
   const [newSeriesType, setNewSeriesType] = useState(normalizePostType(editingPost?.type ?? editingPost?.section) ?? 'travel');
   const [newSeriesTags, setNewSeriesTags] = useState(editingPost?.tags?.join(', ') ?? '');
@@ -124,9 +124,9 @@ export default function CreatePostPage({ onCreate, editingPost }: CreatePostPage
     setSectionsState(buildSectionsState(editingPost));
     setSeriesEnabled(Boolean(editingPost.series));
     setSeriesMode(editingPost.series ? 'existing' : 'new');
-    setSelectedSeriesId(editingPost.seriesId ?? '');
-    setSeriesPart(editingPost.seriesIndex ?? 1);
-    setNewSeriesTitle(editingPost.series ?? '');
+    setSelectedSeriesId(editingPost.series?.seriesId ?? '');
+    setSeriesPart(editingPost.series?.part ?? 1);
+    setNewSeriesTitle(editingPost.series?.title ?? '');
     setNewSeriesDescription('');
     setNewSeriesType(normalizePostType(editingPost.type ?? editingPost.section) ?? 'travel');
     setNewSeriesTags(editingPost.tags?.join(', ') ?? '');
@@ -144,7 +144,7 @@ export default function CreatePostPage({ onCreate, editingPost }: CreatePostPage
     }
 
     const matchedSeries = seriesOptions.find(
-      (series) => series.title.trim().toLowerCase() === editingPost.series?.trim().toLowerCase()
+      (series) => series.title.trim().toLowerCase() === editingPost.series?.title.trim().toLowerCase()
     );
 
     if (matchedSeries) {
@@ -162,9 +162,9 @@ export default function CreatePostPage({ onCreate, editingPost }: CreatePostPage
       return;
     }
 
-    const editingSameSeries = editingPost?.seriesId === selectedSeriesId
-      || (!!editingPost?.series && selectedSeries.title.trim().toLowerCase() === editingPost.series.trim().toLowerCase());
-    setSeriesPart(editingSameSeries ? editingPost?.seriesIndex ?? 1 : selectedSeries.totalParts + 1);
+    const editingSameSeries = editingPost?.series?.seriesId === selectedSeriesId
+      || (!!editingPost?.series && selectedSeries.title.trim().toLowerCase() === editingPost.series.title.trim().toLowerCase());
+    setSeriesPart(editingSameSeries ? editingPost?.series?.part ?? 1 : selectedSeries.totalParts + 1);
   }, [seriesMode, selectedSeriesId, seriesOptions, editingPost]);
 
   const isSeriesValid = !seriesEnabled || (seriesMode === 'existing' ? Boolean(selectedSeriesId) : Boolean(newSeriesTitle.trim() && newSeriesDescription.trim()));

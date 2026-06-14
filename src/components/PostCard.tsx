@@ -51,9 +51,21 @@ export default function PostCard({ post }: PostCardProps) {
         </Box>
         <CardContent>
           <Stack spacing={1}>
-             <Typography variant="caption" sx={{ color: 'var(--batayan-accent)', fontWeight: 600 }}>
-                {post.postedDate}
-              </Typography>
+            <Typography variant="caption" sx={{ color: 'var(--batayan-accent)', fontWeight: 600 }}>
+              {post.postedDate}
+            </Typography>
+            {post.series && (
+              <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
+                <Chip label="ধারাবাহিক" size="small" color="warning" />
+                <Chip
+                  label={
+                    post.series ? `${post.series.title} — Part ${post.series.part}` : String(post.series?.title ?? '')
+                  }
+                  size="small"
+                  variant="outlined"
+                />
+              </Box>
+            )}
             <Typography variant="h6" component="div">
               {post.title}
             </Typography>

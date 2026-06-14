@@ -6,6 +6,7 @@ import { motion } from 'framer-motion';
 import coverHome from '../../img/cover_home.jpg';
 import { sectionMeta } from './SectionPage';
 import { HomePostSkeleton } from '../components/SkeletonLoaders';
+import PostCard from '../components/PostCard';
 
 
 interface HomePageProps {
@@ -74,102 +75,7 @@ export default function HomePage({ posts, sections, isLoading }: HomePageProps) 
             }}
           >
             {carouselPosts.slice(0, 3).map((post) => (
-              <Box
-                key={post.id}
-                component={MotionLink}
-                to={`/post/${post.id}`}
-                initial="rest"
-                whileHover="open"
-                whileTap="open"
-                sx={{
-                  textDecoration: 'none',
-                  color: 'inherit',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  borderRadius: 2,
-                  overflow: 'hidden',
-                  bgcolor: 'rgba(255,255,255,0.78)',
-                  backdropFilter: 'blur(12px)',
-                  border: '1px solid rgba(255,255,255,0.6)',
-                  boxShadow: '0 24px 60px rgba(15, 20, 28, 0.12)',
-                  transition: 'all 0.3s ease',
-                  '&:hover': {
-                    boxShadow: '0 32px 80px rgba(15, 20, 28, 0.16)',
-                    transform: 'translateY(-4px)'
-                  }
-                }}
-              >
-                <Box component={motion.div} sx={{ position: 'relative', overflow: 'hidden' }}>
-                  <Box
-                    component="img"
-                    src={post.heroImage}
-                    alt={post.title}
-                    sx={{
-                      width: '100%',
-                      height: 200,
-                      objectFit: 'cover',
-                      display: 'block'
-                    }}
-                  />
-                  <Box
-                    component={motion.div}
-                    variants={windowPaneVariants}
-                    transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
-                    sx={{
-                      position: 'absolute',
-                      inset: 0,
-                      right: '50%',
-                      transformOrigin: 'left',
-                      bgcolor: 'var(--batayan-pane)',
-                      borderRight: '1px solid rgba(255,255,255,0.42)',
-                      pointerEvents: 'none'
-                    }}
-                  />
-                  <Box
-                    component={motion.div}
-                    variants={windowPaneVariants}
-                    transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
-                    sx={{
-                      position: 'absolute',
-                      inset: 0,
-                      left: '50%',
-                      transformOrigin: 'right',
-                      bgcolor: 'var(--batayan-pane)',
-                      borderLeft: '1px solid rgba(255,255,255,0.42)',
-                      pointerEvents: 'none'
-                    }}
-                  />
-                </Box>
-                <Box sx={{ p: 3, display: 'flex', flexDirection: 'column', gap: 2, flex: 1, bgcolor: 'var(--batayan-card)', color: 'var(--batayan-text)' }}>
-                  <Box>
-                    <Typography variant="caption" sx={{ color: 'var(--batayan-accent)', fontWeight: 600 }}>
-                      {post.section} • {post.postedDate}
-                    </Typography>
-                    <Typography variant="h6" sx={{ fontWeight: 700, mt: 1, mb: 1, color: 'var(--batayan-text)' }}>
-                      {post.title}
-                    </Typography>
-                    <Typography variant="body2" sx={{ color: 'var(--batayan-muted)', lineHeight: 1.6 }}>
-                      {post.summary}
-                    </Typography>
-                  </Box>
-                  <Button
-                    component="span"
-                    size="small"
-                    sx={{
-                      alignSelf: 'flex-start',
-                      p: 0,
-                      fontWeight: 600,
-                      color: 'var(--batayan-accent)',
-                      '&:hover': {
-                        color: 'var(--batayan-text)',
-                        bgcolor: 'transparent'
-                      }
-                    }}
-                  >
-                    বিস্তারিত পড়ুন →
-                  </Button>
-                </Box>
-              </Box>
+              <PostCard post={post} />
             ))}
           </Box>
         ) : (

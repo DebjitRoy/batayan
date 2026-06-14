@@ -5,7 +5,7 @@ import { CommentItem, Post } from '../types';
 import SectionRenderer from '../components/SectionRenderer';
 import CommentSection from '../components/CommentSection';
 import { PostDetailSkeleton } from '../components/SkeletonLoaders';
-import { fetchComments, fetchPost } from '../services/postsApi';
+import { fetchComments, fetchPost, fetchSeries } from '../services/postsApi';
 
 interface PostPageProps {
   posts: Post[];
@@ -25,6 +25,7 @@ export default function PostPage({ posts, isLoadingPosts }: PostPageProps) {
   const [readProgress, setReadProgress] = useState(0);
   const contentRef = useRef<HTMLDivElement | null>(null);
   const endRef = useRef<HTMLDivElement | null>(null);
+  const [seriesItems, setSeriesItems] = useState<Array<{ postId: string; part?: number; heroImage?: string }>>([]);
 
   const related = useMemo(() => {
     if (!post) return [];
@@ -99,6 +100,44 @@ export default function PostPage({ posts, isLoadingPosts }: PostPageProps) {
       isMounted = false;
     };
   }, [postId]);
+
+  useEffect(() => {
+    if (!post?.series?.seriesId) {
+      setSeriesItems([]);
+      return;
+    }
+
+    let isMounted = true;
+
+    fetchSeries(post.series.seriesId)
+      .then((series) => {
+        if (!isMounted) return;
+        const items = series.posts ?? [];
+        // Fetch hero images for each post in the series
+        return Promise.all(items.map(async (it) => {
+          try {
+            const p = await fetchPost(it.postId);
+            return { postId: it.postId, part: it.part, heroImage: p.heroImage };
+          } catch {
+            return { postId: it.postId, part: it.part, heroImage: undefined };
+          }
+        }));
+      })
+      .then((mapped) => {
+        if (!isMounted) return;
+        if (Array.isArray(mapped)) {
+          setSeriesItems(mapped as any);
+        }
+      })
+      .catch(() => {
+        if (!isMounted) return;
+        setSeriesItems([]);
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [post?.series?.seriesId]);
 
   useEffect(() => {
     setShowRelated(false);
@@ -216,9 +255,36 @@ export default function PostPage({ posts, isLoadingPosts }: PostPageProps) {
         <Typography variant="h4">
           {post.title}
         </Typography>
+        {post.series && (
+          <Typography variant="subtitle1" sx={{ color: 'var(--batayan-muted)' }}>
+          {post.series.part ? `${post.series.title} — Part ${post.series.part}` : String(post.series.title)}
+        </Typography>
+        )}
         <Typography sx={{ color: 'var(--batayan-text)' }}>
           প্রকাশিত: {post.postedDate} • আপডেট: {post.addedDate}
         </Typography>
+        {post.series && (
+          <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
+            <Chip label="ধারাবাহিক" size="small" color="warning" />
+            {seriesItems
+                .filter((it) => it.postId !== post.id)
+                .sort((a, b) => (a.part ?? 0) - (b.part ?? 0))
+                .map((it) => (
+                  <Chip
+                    key={it.postId}
+                    label={
+                      it.part ? ` Part ${it.part}` : String(post.series?.title ?? '')
+                    }
+                    onClick={() => {
+                      const url = `/post/${it.postId}`;
+                      window.location.href = url;
+                    }}
+                    size="small"
+                    variant="outlined"
+                  />
+                ))}
+          </Box>
+        )}
         <Stack direction="row" spacing={1} sx={{ flexWrap: 'wrap' }}>
           <Chip label={post.section} sx={{ color: 'var(--batayan-muted)', borderColor: 'var(--batayan-muted)' }} />
           {post.tags.map((tag) => (
@@ -239,6 +305,57 @@ export default function PostPage({ posts, isLoadingPosts }: PostPageProps) {
         <SectionRenderer sections={post.sections} />
       </Box>
       <Box ref={endRef} sx={{ height: 1, width: '100%' }} />
+      {seriesItems.length > 0 && (
+        <Box sx={{ opacity: showRelated ? 1 : 0, transform: showRelated ? 'translateY(0)' : 'translateY(24px)', transition: 'opacity 0.55s ease, transform 0.55s ease', pointerEvents: showRelated ? 'auto' : 'none' }}>
+          <Typography variant="h6" gutterBottom>
+            এই ধারাবাহিকের অন্যান্য পর্ব
+          </Typography>
+          <Box sx={{ py: 1 }}>
+            <Stack direction="row" spacing={1} sx={{ overflowX: 'auto', py: 1 }}>
+              {seriesItems
+                .filter((it) => it.postId !== post.id)
+                .sort((a, b) => (a.part ?? 0) - (b.part ?? 0))
+                .map((it) => (
+                  <Box
+                    key={it.postId}
+                    component={Link}
+                    to={`/post/${it.postId}`}
+                    sx={{
+                      display: 'block',
+                      position: 'relative',
+                      width: { xs: 56, sm: 72 },
+                      minWidth: { xs: 56, sm: 72 },
+                      height: { xs: 56, sm: 72 },
+                      borderRadius: 1,
+                      overflow: 'hidden',
+                      textDecoration: 'none',
+                      boxShadow: '0 6px 18px rgba(0,0,0,0.12)'
+                    }}
+                  >
+                    <Box
+                      component="img"
+                      src={it.heroImage}
+                      alt={String(it.part ?? '')}
+                      sx={{
+                        width: '100%',
+                        height: '100%',
+                        objectFit: 'cover',
+                        filter: 'blur(4px) brightness(0.55)',
+                        transform: 'scale(1.06)'
+                      }}
+                    />
+                    <Box sx={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      <Typography variant="caption" sx={{ color: '#fff', fontWeight: 800, textShadow: '0 6px 18px rgba(0,0,0,0.45)', lineHeight: 1 }}>
+                        {it.part ?? ''}
+                      </Typography>
+                    </Box>
+                  </Box>
+                ))}
+            </Stack>
+          </Box>
+        </Box>
+      )}
+
       {related.length > 0 && (
         <Box
           sx={{

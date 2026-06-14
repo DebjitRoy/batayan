@@ -146,8 +146,8 @@ export default function AdminPage({ posts, onDelete, onStatusChange }: AdminPage
               <TableRow key={post.id}>
                 <TableCell>{post.title}</TableCell>
                 <TableCell>{post.section}</TableCell>
-                <TableCell>{post.series || '-'}</TableCell>
-                <TableCell>{post.seriesIndex ?? '-'}</TableCell>
+                <TableCell>{post.series?.title || '-'}</TableCell>
+                <TableCell>{post.series?.part ?? '-'}</TableCell>
                 <TableCell>
                   <Select
                     size="small"

@@ -16,6 +16,20 @@ export interface CommentItem {
   reply?: string;
 }
 
+export interface SeriesPost{
+  postId: string;
+  title: string;
+  part: number;
+}
+
+export interface Series{
+  seriesId: string;
+  title: string;
+  totalParts: number;
+  part: number;
+  posts: SeriesPost[];
+}
+
 export interface Post {
   id: string;
   title: string;
@@ -27,9 +41,7 @@ export interface Post {
   section: string;
   type: string;
   status?: string;
-  series?: string;
-  seriesId?: string;
-  seriesIndex?: number;
+  series?: Series;
   tags: string[];
   sections: ContentSection[];
   comments: CommentItem[];
