@@ -11,8 +11,18 @@ export const posts: Post[] = [
     postedDate: '2026-05-15',
     section: 'Travel',
     type: 'Travel',
-    series: 'মেঘলা সকাল',
-    seriesIndex: 1,
+    series: {
+      seriesId: 'sundarban-series',
+      title: 'সুন্দরবন সফর',
+      totalParts: 3,
+    part: 1,
+    posts: [
+      {
+        postId: 'sundarban-morning',
+        title: 'সুন্দরবনের সকালে',
+        part: 1
+      }]
+    },
     tags: ['সফর', 'প্রকৃতি', 'নদী'],
     sections: [
       {

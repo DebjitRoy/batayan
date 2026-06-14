@@ -59,7 +59,7 @@ export default function PostCard({ post }: PostCardProps) {
                 <Chip label="ধারাবাহিক" size="small" color="warning" />
                 <Chip
                   label={
-                    post.series ? `${post.series.title} — Part ${post.series.part}` : String(post.series?.title ?? '')
+                    post.series ? `${post.series.title} — Part ${post.series.part}` : String((post.series as any)?.title ?? '')
                   }
                   size="small"
                   variant="outlined"
