@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Alert, Box, Button, TextField, Typography, Paper, Stack, IconButton, Select, MenuItem, Checkbox, FormControlLabel } from '@mui/material';
+import { Alert, Box, Button, TextField, Typography, Paper, Stack, IconButton, Select, MenuItem, Checkbox, FormControl, InputLabel, FormControlLabel } from '@mui/material';
 import DeleteIcon from '@mui/icons-material/Delete';
 import { CreatePostInput, SeriesItem, fetchSeriesList, normalizePostType } from '../services/postsApi';
 import { Post } from '../types';
@@ -85,6 +85,8 @@ export default function CreatePostPage({ onCreate, editingPost }: CreatePostPage
   const [heroFile, setHeroFile] = useState<File | null>(null);
   const [heroImageError, setHeroImageError] = useState('');
   const [sectionImageErrors, setSectionImageErrors] = useState<Record<string, string>>({});
+  const [searchBy, setSearchBy] = useState(editingPost?.tags?.join(', ') ?? '');
+  const [status, setStatus] = useState(editingPost?.status ?? 'draft');
   const [postType, setPostType] = useState(normalizePostType(editingPost?.type ?? editingPost?.section) ?? 'travel');
   const [postedDate, setPostedDate] = useState(editingPost?.postedDate ?? new Date().toISOString().slice(0, 10));
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -112,6 +114,8 @@ export default function CreatePostPage({ onCreate, editingPost }: CreatePostPage
       setNewSeriesDescription('');
       setNewSeriesType(normalizePostType(postType) ?? 'travel');
       setNewSeriesTags('');
+      setSearchBy('');
+      setStatus('draft');
       return;
     }
 
@@ -130,6 +134,8 @@ export default function CreatePostPage({ onCreate, editingPost }: CreatePostPage
     setNewSeriesDescription('');
     setNewSeriesType(normalizePostType(editingPost.type ?? editingPost.section) ?? 'travel');
     setNewSeriesTags(editingPost.tags?.join(', ') ?? '');
+    setSearchBy(editingPost.tags?.join(', ') ?? '');
+    setStatus(editingPost.status ?? 'draft');
   }, [editingPost]);
 
   useEffect(() => {
@@ -177,7 +183,17 @@ export default function CreatePostPage({ onCreate, editingPost }: CreatePostPage
       postType: postType,
       gist: summary,
       heroImageFile: heroFile ?? undefined,
-      searchBy: [postType, title],
+      status,
+      searchBy: Array.from(
+        new Set([
+          postType,
+          title,
+          ...searchBy
+            .split(',')
+            .map((term) => term.trim())
+            .filter(Boolean)
+        ])
+      ),
       additionalInfo: '',
       content: sectionsState.map((s) => {
         let video = s.videoLink ?? '';
@@ -315,8 +331,18 @@ export default function CreatePostPage({ onCreate, editingPost }: CreatePostPage
           rows={3}
           fullWidth
         />
+        <TextField
+          label="সন্ধান শব্দবন্ধ"
+          value={searchBy}
+          placeholder="কমা দিয়ে আলাদা করে লিখুন (যেমনঃ himalata, arunachal, arunachal pradesh)"
+          onChange={(event) => setSearchBy(event.target.value)}
+          inputProps={{ maxLength: SUMMARY_MAX_LENGTH }}
+          multiline
+          rows={1}
+          fullWidth
+        />
 
-        <Box>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, flexWrap: 'wrap' }}>
           <FormControlLabel
             control={
               <Checkbox
@@ -326,6 +352,23 @@ export default function CreatePostPage({ onCreate, editingPost }: CreatePostPage
             }
             label="এই পোস্ট সিরিজের অংশ"
           />
+          <FormControl size="small" sx={{ minWidth: 160 }}>
+            <InputLabel id="post-status-label">Status</InputLabel>
+            <Select
+              labelId="post-status-label"
+              label="Status"
+              value={status}
+              disabled={!isEditMode}
+              onChange={(event) => setStatus(event.target.value as string)}
+            >
+              {['draft', 'published', 'archived'].map((option) => (
+                <MenuItem key={option} value={option}>
+                  {option}
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+        </Box>
 
           {seriesEnabled && (
             <Paper sx={{ p: 2, border: '1px solid rgba(0,0,0,0.12)', bgcolor: 'background.default' }}>
@@ -414,7 +457,6 @@ export default function CreatePostPage({ onCreate, editingPost }: CreatePostPage
               )}
             </Paper>
           )}
-        </Box>
 
         <Box>
           <Typography sx={{ mb: 1 }}>হিরো ইমেজ (ব্রাউজ বা ড্র্যাগ-অ্যান্ড-ড্রপ)</Typography>

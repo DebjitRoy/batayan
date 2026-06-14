@@ -113,6 +113,7 @@ export interface CreatePostInput {
   gist: string;
   content: CreatePostSectionInput[];
   searchBy: string[];
+  status?: string;
   additionalInfo?: string;
   heroImageFile?: File | null;
   seriesId?: string;
@@ -420,7 +421,7 @@ export async function createPost(input: CreatePostInput, token: string): Promise
     body: JSON.stringify({
       title: input.title,
       postType: normalizePostType(input.postType),
-      status: 'draft',
+      status: input.status ?? 'draft',
       gist: input.gist,
       content: input.content.map((section) => ({
         header: section.header,
@@ -494,6 +495,7 @@ export async function updatePost(postId: string, input: CreatePostInput, token: 
     body: JSON.stringify({
       title: input.title,
       postType: normalizePostType(input.postType),
+      status: input.status ?? 'draft',
       gist: input.gist,
       content: input.content.map((section) => ({
         header: section.header,
