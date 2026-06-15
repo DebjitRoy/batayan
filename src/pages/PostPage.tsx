@@ -61,6 +61,15 @@ export default function PostPage({ posts, isLoadingPosts }: PostPageProps) {
     return [...nearest, ...randomSelection];
   }, [posts, post]);
 
+    const prevItemsInSeries = useMemo(() => {
+    if (!post?.series?.seriesId) return [];
+    return seriesItems.filter((it) => it.postId !== post.id && (it.part ?? 0) < (post.series?.part ?? 0)).sort((a, b) => (a.part ?? 0) - (b.part ?? 0));
+  }, [post, seriesItems]);
+  const nextItemsInSeries = useMemo(() => {
+    if (!post?.series?.seriesId) return [];
+    return seriesItems.filter((it) => it.postId !== post.id && (it.part ?? 0) > (post.series?.part ?? 0)).sort((a, b) => (a.part ?? 0) - (b.part ?? 0));
+  }, [post, seriesItems]);
+
   useEffect(() => {
     setPost(listPost);
   }, [listPost]);
@@ -266,23 +275,39 @@ export default function PostPage({ posts, isLoadingPosts }: PostPageProps) {
         {post.series && (
           <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
             <Chip label="ধারাবাহিক" size="small" color="warning" />
-            {seriesItems
-                .filter((it) => it.postId !== post.id)
-                .sort((a, b) => (a.part ?? 0) - (b.part ?? 0))
-                .map((it) => (
-                  <Chip
-                    key={it.postId}
-                    label={
-                      it.part ? ` Part ${it.part}` : String(post.series?.title ?? '')
-                    }
-                    onClick={() => {
-                      const url = `/post/${it.postId}`;
-                      window.location.href = url;
-                    }}
-                    size="small"
-                    variant="outlined"
-                  />
+            {prevItemsInSeries.map((it) => (
+              <Chip
+                key={it.postId}
+                sx={{ color: 'var(--batayan-accent)' }}
+                  label={
+                    it.part ? ` Part ${it.part}` : String(post.series?.title ?? '')
+                  }
+                  onClick={() => {
+                    const url = `/post/${it.postId}`;
+                    window.location.href = url;
+                  }}
+                  size="small"
+                  variant="outlined"
+                />
                 ))}
+              <Typography sx={{ color: 'var(--batayan-muted)' }}>
+                  •
+              </Typography>
+              {nextItemsInSeries.map((it) => (
+                <Chip
+                
+                  key={it.postId}
+                  label={
+                    it.part ? ` Part ${it.part}` : String(post.series?.title ?? '')
+                  }
+                  onClick={() => {
+                    const url = `/post/${it.postId}`;
+                    window.location.href = url;
+                  }}
+                  size="small"
+                  variant="outlined"
+                />
+              ))}
           </Box>
         )}
         <Stack direction="row" spacing={1} sx={{ flexWrap: 'wrap' }}>
