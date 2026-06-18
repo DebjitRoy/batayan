@@ -11,9 +11,10 @@ interface PostPageProps {
   posts: Post[];
   fontSize: number;
   isLoadingPosts: boolean;
+  userToken?: string;
 }
 
-export default function PostPage({ posts, isLoadingPosts }: PostPageProps) {
+export default function PostPage({ posts, isLoadingPosts, userToken }: PostPageProps) {
   const { postId } = useParams<{ postId: string }>();
   const listPost = useMemo(() => posts.find((item) => item.id === postId), [posts, postId]);
   const [post, setPost] = useState<Post | undefined>(listPost);
@@ -445,6 +446,10 @@ export default function PostPage({ posts, isLoadingPosts }: PostPageProps) {
         comments={comments.length ? comments : post.comments}
         postId={post.id}
         showHint={showComments}
+        userToken={userToken}
+        onCommentUpdate={(updatedComment) => {
+          setComments((current) => current.map((c) => (c.id === updatedComment.id ? updatedComment : c)));
+        }}
       />
       </Box>
     </Box>

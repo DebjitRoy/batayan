@@ -9,11 +9,12 @@ import PostPage from './pages/PostPage';
 import LatestPostRedirect from './pages/LatestPostRedirect';
 import SearchIndex from './pages/SearchIndex';
 import LoginPage from './pages/LoginPage';
+import RegisterPage from './pages/RegisterPage';
 import AdminPage from './pages/AdminPage';
 import CreatePostPage from './pages/CreatePostPage';
 import { posts as initialPosts } from './data/posts';
 import { Post } from './types';
-import { CreatePostInput, createPost, deletePost, fetchPost, fetchPosts, loginAuthor, updatePost, updatePostStatus } from './services/postsApi';
+import { CreatePostInput, createPost, deletePost, fetchPost, fetchPosts, loginAuthor, registerAuthor, updatePost, updatePostStatus } from './services/postsApi';
 
 function App() {
   const [posts, setPosts] = useState<Post[]>(initialPosts);
@@ -70,6 +71,12 @@ function App() {
 
   const handleLogin = async (email: string, password: string) => {
     const response = await loginAuthor(email, password);
+    setUser({ name: response.user.name || response.user.email, token: response.token });
+    navigate('/admin');
+  };
+
+  const handleRegister = async (email: string, password: string) => {
+    const response = await registerAuthor(email, password);
     setUser({ name: response.user.name || response.user.email, token: response.token });
     navigate('/admin');
   };
@@ -178,13 +185,14 @@ function App() {
               <Route path="/post/latest" element={<LatestPostRedirect />} />
               <Route
                 path="/post/:postId"
-                element={<PostPage posts={posts} fontSize={fontSize} isLoadingPosts={isLoadingPosts} />}
+                element={<PostPage posts={posts} fontSize={fontSize} isLoadingPosts={isLoadingPosts} userToken={user?.token} />}
               />
               <Route path="/index" element={<SearchIndex posts={posts} isLoadingPosts={isLoadingPosts} />} />
               <Route path="/login" element={<LoginPage onLogin={handleLogin} />} />
+              <Route path="/register" element={<RegisterPage onRegister={handleRegister} />} />
               <Route
                 path="/admin"
-                element={user ? <AdminPage posts={posts} onDelete={handleDelete} onStatusChange={handleUpdateStatus} /> : <Navigate to="/login" replace />}
+                element={user ? <AdminPage posts={posts} onDelete={handleDelete} onStatusChange={handleUpdateStatus} userToken={user.token} /> : <Navigate to="/login" replace />}
               />
               <Route
                 path="/create"

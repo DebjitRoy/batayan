@@ -277,6 +277,7 @@ const mapComment = (comment: ApiComment): CommentItem => ({
   date: normalizeDate(comment.createdAt),
   text: comment.description ?? '',
   likes: 0,
+  title: comment.title || '',
   reply: comment.reply || undefined
 });
 
@@ -404,6 +405,19 @@ export async function loginAuthor(email: string, password: string) {
     method: 'POST',
     headers: authHeaders(),
     body: JSON.stringify({ email, password })
+  });
+}
+
+export async function registerAuthor(email: string, password: string) {
+  return requestJson<AuthResponse>('/auth/register', {
+    method: 'POST',
+    headers: authHeaders(),
+    body: JSON.stringify({
+      name: 'Admin',
+      email,
+      password,
+      role: 'admin'
+    })
   });
 }
 
@@ -562,6 +576,16 @@ export async function createComment(postId: string, input: CreateCommentInput): 
       description: input.description,
       reply: ''
     })
+  });
+
+  return mapComment(response);
+}
+
+export async function replyToComment(postId: string, commentId: string, reply: string, token: string): Promise<CommentItem> {
+  const response = await requestJson<ApiComment>(`/posts/${postId}/comments/${commentId}/reply`, {
+    method: 'PUT',
+    headers: authHeaders(token),
+    body: JSON.stringify({ reply })
   });
 
   return mapComment(response);

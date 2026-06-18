@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { Alert, Box, Button, Paper, TextField, Typography } from '@mui/material';
 
 interface LoginPageProps {
@@ -52,6 +52,14 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
         <Button variant="contained" onClick={submit} disabled={isSubmitDisabled || isSubmitting}>
           প্রবেশ করুন
         </Button>
+        <Box sx={{ textAlign: 'center', pt: 1 }}>
+          <Typography variant="body2">
+            নতুন অ্যাকাউন্ট তৈরি করতে চান?{' '}
+            <Link to="/register" style={{ color: 'inherit', textDecoration: 'underline' }}>
+              এখানে সাইন আপ করুন
+            </Link>
+          </Typography>
+        </Box>
       </Box>
     </Paper>
   );

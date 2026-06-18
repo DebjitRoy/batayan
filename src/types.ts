@@ -12,6 +12,7 @@ export interface CommentItem {
   author: string;
   date: string;
   text: string;
+  title: string;
   likes: number;
   reply?: string;
 }
