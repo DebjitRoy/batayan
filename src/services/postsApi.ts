@@ -1,4 +1,4 @@
-import { CommentItem, ContentSection, Post } from '../types';
+import { CommentItem, ContentSection, Post, WorkerJob } from '../types';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? '/api';
 const IMAGE_BASE_URL = 'https://bengali-blog-static-uploads.s3.amazonaws.com';
@@ -590,3 +590,37 @@ export async function replyToComment(postId: string, commentId: string, reply: s
 
   return mapComment(response);
 }
+
+export enum JobStatus {
+  PENDING = 'pending',
+  COMPLETED = 'completed',
+  FAILED = 'failed'
+};
+export async function createSummary(content: string, token: string): Promise<string> {
+  const response = await requestJson<{ jobId: string, status: JobStatus }>('/summary', {
+    method: 'POST',
+    headers: authHeaders(token),
+    body: JSON.stringify({ content })
+  });
+
+  return response.jobId;
+}
+
+export async function checkGrammerForSections(sections:string[], token: string): Promise<string> {
+  const response = await requestJson<string>('/grammar-check', {
+    method: 'POST',
+    headers: authHeaders(token),
+    body: JSON.stringify({ sections })
+  });
+
+  return response;
+}
+
+export async function getWorkerData(workerId: string, token: string): Promise<WorkerJob> {
+  const response = await requestJson<WorkerJob>(`/worker/${workerId}`, {
+    method: 'GET',
+    headers: authHeaders(token)
+  });
+
+  return response;
+} 

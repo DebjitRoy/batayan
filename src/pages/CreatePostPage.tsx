@@ -20,12 +20,17 @@ import {
 } from '@mui/material';
 import DeleteIcon from '@mui/icons-material/Delete';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
-import { CreatePostInput, SeriesItem, fetchSeriesList, normalizePostType } from '../services/postsApi';
+import { CreatePostInput, SeriesItem, createSummary, fetchSeriesList, normalizePostType } from '../services/postsApi';
 import { Post } from '../types';
 
 interface CreatePostPageProps {
   onCreate: (post: CreatePostInput) => Promise<void>;
+  onSummaryCreate: (contents: string) => Promise<void>;
   editingPost?: Post;
+  generatedSummary?: string | null;
+  summaryPending?: boolean;
+  summaryError?: string | null;
+  clearSummary?: () => void;
 }
 
 const TITLE_MAXLength = 100; // keep original constant naming style if needed
@@ -96,7 +101,7 @@ const buildSectionsState = (post?: Post) => {
     : [{ id: `sec-${Date.now()}`, header: '', body: '', imageFile: null }];
 };
 
-export default function CreatePostPage({ onCreate, editingPost }: CreatePostPageProps) {
+export default function CreatePostPage({ onCreate, onSummaryCreate, editingPost, generatedSummary, summaryPending, summaryError, clearSummary }: CreatePostPageProps) {
   const isEditMode = Boolean(editingPost);
   const [title, setTitle] = useState(editingPost?.title ?? '');
   const [summary, setSummary] = useState(editingPost?.summary ?? '');
@@ -208,6 +213,19 @@ export default function CreatePostPage({ onCreate, editingPost }: CreatePostPage
   }, [sectionsState]);
 
   const isSeriesValid = !seriesEnabled || (seriesMode === 'existing' ? Boolean(selectedSeriesId) : Boolean(newSeriesTitle.trim() && newSeriesDescription.trim()));
+
+  const onCreateSummary = () => {
+    // Implementation for creating summary
+    console.log('Creating summary for sections:', sectionsState);
+    const contents = sectionsState.map((s) => s.body).filter(Boolean).join(' '); // Get non-empty section bodies
+    onSummaryCreate(contents);
+  };
+
+  useEffect(() => {
+    if (generatedSummary) {
+      setSummary(generatedSummary);
+    }
+  }, [generatedSummary]);
 
   const submit = async () => {
     if (!title || !summary || (!heroFile && !heroImage) || !isSeriesValid) return;
@@ -348,6 +366,7 @@ export default function CreatePostPage({ onCreate, editingPost }: CreatePostPage
 
       <Stack spacing={3}>
         {submitError && <Alert severity="error">{submitError}</Alert>}
+        {summaryError && <Alert severity="error">{summaryError}</Alert>}
 
         <TextField
           label="শিরোনাম"
@@ -366,18 +385,6 @@ export default function CreatePostPage({ onCreate, editingPost }: CreatePostPage
             </MenuItem>
           ))}
         </Select>
-
-        <TextField
-          label="সারাংশ"
-          value={summary}
-          onChange={(event) => setSummary(event.target.value)}
-          inputProps={{ maxLength: SUMMARY_MAX_LENGTH }}
-          helperText={`${summary.length}/${SUMMARY_MAX_LENGTH}`}
-          FormHelperTextProps={{ sx: { textAlign: 'right' } }}
-          multiline
-          rows={3}
-          fullWidth
-        />
 
         <TextField
           label="সন্ধান শব্দবন্ধ"
@@ -522,7 +529,7 @@ export default function CreatePostPage({ onCreate, editingPost }: CreatePostPage
                 <AccordionDetails>
                   <Paper sx={{ p: 2 }} elevation={0}>
                     <TextField label="Section header" value={sec.header} onChange={(e) => setSectionsState((s) => s.map((x) => (x.id === sec.id ? { ...x, header: e.target.value } : x)))} fullWidth sx={{ mt: 1 }} />
-                    <TextField label="Body" value={sec.body} onChange={(e) => setSectionsState((s) => s.map((x) => (x.id === sec.id ? { ...x, body: e.target.value } : x)))} multiline rows={3} fullWidth sx={{ mt: 1 }} />
+                    <TextField label="Body" value={sec.body} onChange={(e) => setSectionsState((s) => s.map((x) => (x.id === sec.id ? { ...x, body: e.target.value } : x)))} multiline rows={10} fullWidth sx={{ mt: 1 }} />
 
                     <Box sx={{ mt: 1 }}>
                       <Typography sx={{ mb: 1 }}>Section Image (optional: browse or drop)</Typography>
@@ -564,11 +571,37 @@ export default function CreatePostPage({ onCreate, editingPost }: CreatePostPage
             ))}
           </Stack>
 
+          {(isEditMode || summary) && (
+          <TextField
+            label="সারাংশ"
+            value={summary}
+            onChange={(event) => setSummary(event.target.value)}
+            inputProps={{ maxLength: SUMMARY_MAX_LENGTH }}
+            helperText={`${summary.length}/${SUMMARY_MAX_LENGTH}`}
+            FormHelperTextProps={{ sx: { textAlign: 'right' } }}
+            multiline
+            rows={5}
+            fullWidth
+          />
+        )}
+
         </Box>
 
-        <Button variant="contained" onClick={submit} disabled={!title || !summary || (!heroFile && !heroImage) || isSubmitting || !isSeriesValid}>
-          {isEditMode ? 'পরিবর্তন সংরক্ষণ করুন' : 'পোস্ট তৈরি করুন'}
-        </Button>
+        {isEditMode && (
+          <Button variant="contained" onClick={submit} disabled={!title || !summary || (!heroFile && !heroImage) || isSubmitting || !isSeriesValid}>
+             পরিবর্তন সংরক্ষণ করুন
+          </Button>
+        )}
+        {!isEditMode && !summary && (
+          <Button variant="contained" onClick={onCreateSummary} disabled={Boolean(summaryPending)}>
+            {summaryPending ? 'সারাংশ তৈরি হচ্ছে...' : 'সারাংশ তৈরি করুন'}
+          </Button>
+        )}
+        {!isEditMode && summary && (
+          <Button variant="contained" onClick={submit} disabled={!title || (!heroFile && !heroImage) || isSubmitting || !isSeriesValid}>
+             পোস্ট তৈরি করুন
+          </Button>
+        )}
       </Stack>
     </Paper>
   );

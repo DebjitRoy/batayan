@@ -47,3 +47,17 @@ export interface Post {
   sections: ContentSection[];
   comments: CommentItem[];
 }
+
+export type WorkerJobType = 'grammerCheck' | 'summary';
+export type WorkerJobStatus = 'pending' | 'pending' | 'completed' | 'failed';
+
+export interface WorkerJob {
+  id: string;
+  jobType: WorkerJobType;
+  status:WorkerJobStatus;
+  error?: string;
+  data: any;
+  result?: any;
+  updatedAt: string;
+  createdAt: string;
+}

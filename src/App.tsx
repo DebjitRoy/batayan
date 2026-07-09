@@ -14,11 +14,15 @@ import AdminPage from './pages/AdminPage';
 import CreatePostPage from './pages/CreatePostPage';
 import { posts as initialPosts } from './data/posts';
 import { Post } from './types';
-import { CreatePostInput, createPost, deletePost, fetchPost, fetchPosts, loginAuthor, registerAuthor, updatePost, updatePostStatus } from './services/postsApi';
+import { CreatePostInput, createPost, createSummary, deletePost, fetchPost, fetchPosts, getWorkerData, loginAuthor, registerAuthor, updatePost, updatePostStatus } from './services/postsApi';
 
 function App() {
   const [posts, setPosts] = useState<Post[]>(initialPosts);
   const [isLoadingPosts, setIsLoadingPosts] = useState(true);
+  const [summaryId, setSummaryId] = useState<string | null>(null);
+  const [generatedSummary, setGeneratedSummary] = useState<string | null>(null);
+  const [summaryPending, setSummaryPending] = useState(false);
+  const [summaryError, setSummaryError] = useState<string | null>(null);
   const [postsError, setPostsError] = useState<string | null>(null);
   const [fontSize, setFontSize] = useState(16);
   const [colorMode, setColorMode] = useState<'dark' | 'light'>('light');
@@ -72,13 +76,20 @@ function App() {
   const handleLogin = async (email: string, password: string) => {
     const response = await loginAuthor(email, password);
     setUser({ name: response.user.name || response.user.email, token: response.token });
-    navigate('/admin');
+    if(user) {
+      setTimeout(() => {
+        navigate('/admin');
+      }, 1000);
+    }
   };
-
   const handleRegister = async (email: string, password: string) => {
     const response = await registerAuthor(email, password);
     setUser({ name: response.user.name || response.user.email, token: response.token });
-    navigate('/admin');
+    if(user) {
+      setTimeout(() => {
+        navigate('/admin');
+      }, 1000);
+    }
   };
 
   const handleSavePost = async (newPost: CreatePostInput) => {
@@ -94,6 +105,78 @@ function App() {
 
     navigate('/admin');
   };
+
+  const handleSummaryCreate = async (contents: string) => {
+    if (!user) return;
+    try {
+      setSummaryError(null);
+      setGeneratedSummary(null);
+      const jobId = await createSummary(contents, user.token);
+      setSummaryId(jobId);
+      setSummaryPending(true);
+      console.log('Summary ID created:', jobId);
+    } catch (err) {
+      setSummaryError('সারাংশ তৈরিতে ত্রুটি ঘটেছে। অনুগ্রহ করে আবার চেষ্টা করুন।');
+      setSummaryPending(false);
+    }
+  }
+
+  // Poll worker endpoint using intervals until completed/failed
+  useEffect(() => {
+    if (!summaryId || !user) return;
+
+    let cancelled = false;
+    const intervals = [1000, 2000, 3000, 5000];
+
+    const getSummaryFromWorker = (worker: any): string | null => {
+      if (!worker) return null;
+      if (typeof worker.result === 'string') return worker.result;
+      if (worker.result && typeof worker.result.summary === 'string') return worker.result.summary;
+      if (worker.data && typeof worker.data.summary === 'string') return worker.data.summary;
+      if (typeof worker.data === 'string') return worker.data;
+      return null;
+    };
+
+    (async function poll() {
+      let attempt = 0;
+      while (!cancelled) {
+        try {
+          const worker = await getWorkerData(summaryId as string, user.token);
+          if (cancelled) break;
+
+          if (worker.status === 'completed') {
+            const text = getSummaryFromWorker(worker);
+            setGeneratedSummary(text ?? null);
+            setSummaryPending(false);
+            setSummaryId(null);
+            setSummaryError(null);
+            break;
+          }
+
+          if (worker.status === 'failed') {
+            setSummaryError(worker.error ?? 'সারাংশ তৈরিতে ব্যর্থ হয়েছে।');
+            setSummaryPending(false);
+            setSummaryId(null);
+            break;
+          }
+        } catch (e) {
+          // network or server error - set error and stop polling
+          setSummaryError('সার্ভারে জব স্ট্যাটাস পাওয়া যায়নি। পরে চেষ্টা করুন।');
+          setSummaryPending(false);
+          setSummaryId(null);
+          break;
+        }
+
+        const wait = intervals[Math.min(attempt, intervals.length - 1)];
+        await new Promise((res) => setTimeout(res, wait));
+        attempt += 1;
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [summaryId, user]);
 
   const handleDelete = async (id: string) => {
     if (user) {
@@ -196,7 +279,15 @@ function App() {
               />
               <Route
                 path="/create"
-                element={user ? <CreatePostPage onCreate={handleSavePost} editingPost={editingPost} /> : <Navigate to="/login" replace />}
+                element={user ? 
+                <CreatePostPage 
+                  onCreate={handleSavePost} 
+                  onSummaryCreate={handleSummaryCreate} 
+                  editingPost={editingPost} 
+                  generatedSummary={generatedSummary} 
+                  summaryPending={summaryPending} 
+                  summaryError={summaryError} 
+                  clearSummary={() => { setGeneratedSummary(null); setSummaryError(null); }} /> : <Navigate to="/login" replace />}
               />
               <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>
