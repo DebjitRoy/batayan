@@ -12,7 +12,7 @@ export interface CommentItem {
   author: string;
   date: string;
   text: string;
-  title: string;
+  title?: string;
   likes: number;
   reply?: string;
 }
@@ -48,8 +48,8 @@ export interface Post {
   comments: CommentItem[];
 }
 
-export type WorkerJobType = 'grammerCheck' | 'summary';
-export type WorkerJobStatus = 'pending' | 'pending' | 'completed' | 'failed';
+export type WorkerJobType = 'grammarCheck' | 'grammerCheck' | 'summary';
+export type WorkerJobStatus = 'pending' | 'completed' | 'failed';
 
 export interface WorkerJob {
   id: string;

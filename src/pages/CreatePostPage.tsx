@@ -26,10 +26,14 @@ import { Post } from '../types';
 interface CreatePostPageProps {
   onCreate: (post: CreatePostInput) => Promise<void>;
   onSummaryCreate: (contents: string) => Promise<void>;
+  onGrammarCheck: (sections: Array<{ id: string; text: string }>) => Promise<void>;
   editingPost?: Post;
   generatedSummary?: string | null;
   summaryPending?: boolean;
   summaryError?: string | null;
+  grammarPending?: boolean;
+  grammarError?: string | null;
+  grammarSuggestions?: Array<{ sectionId: string; suggestion: string; reason: string }>;
   clearSummary?: () => void;
 }
 
@@ -101,7 +105,7 @@ const buildSectionsState = (post?: Post) => {
     : [{ id: `sec-${Date.now()}`, header: '', body: '', imageFile: null }];
 };
 
-export default function CreatePostPage({ onCreate, onSummaryCreate, editingPost, generatedSummary, summaryPending, summaryError, clearSummary }: CreatePostPageProps) {
+export default function CreatePostPage({ onCreate, onSummaryCreate, onGrammarCheck, editingPost, generatedSummary, summaryPending, summaryError, grammarPending, grammarError, grammarSuggestions = [], clearSummary }: CreatePostPageProps) {
   const isEditMode = Boolean(editingPost);
   const [title, setTitle] = useState(editingPost?.title ?? '');
   const [summary, setSummary] = useState(editingPost?.summary ?? '');
@@ -213,12 +217,21 @@ export default function CreatePostPage({ onCreate, onSummaryCreate, editingPost,
   }, [sectionsState]);
 
   const isSeriesValid = !seriesEnabled || (seriesMode === 'existing' ? Boolean(selectedSeriesId) : Boolean(newSeriesTitle.trim() && newSeriesDescription.trim()));
+  const showGrammarButton = status === 'draft' && sectionsState.some((section) => section.body.trim());
 
   const onCreateSummary = () => {
-    // Implementation for creating summary
-    console.log('Creating summary for sections:', sectionsState);
-    const contents = sectionsState.map((s) => s.body).filter(Boolean).join(' '); // Get non-empty section bodies
+    const contents = sectionsState.map((s) => s.body).filter(Boolean).join(' ');
     onSummaryCreate(contents);
+  };
+
+  const onCheckGrammar = () => {
+    console.log('Checking grammar for sections:', {editingPost, sectionsState});
+    if(!editingPost){
+      throw new Error('Can\'t do Grammar check on a new post.');
+    }
+    const grammerCheckSections = editingPost.sections.filter((s) => s.type === 'text').map((s) => ({ id: s.id, text: s.content }));
+    onGrammarCheck(grammerCheckSections);
+    // onGrammarCheck(sectionsState.map((section) => ({ id: section.id, text: section.body })));
   };
 
   useEffect(() => {
@@ -591,6 +604,33 @@ export default function CreatePostPage({ onCreate, onSummaryCreate, editingPost,
           <Button variant="contained" onClick={submit} disabled={!title || !summary || (!heroFile && !heroImage) || isSubmitting || !isSeriesValid}>
              পরিবর্তন সংরক্ষণ করুন
           </Button>
+        )}
+        {showGrammarButton && (
+          <Box>
+            <Button variant="outlined" onClick={onCheckGrammar} disabled={Boolean(grammarPending)}>
+              {grammarPending ? 'গ্রামার পরীক্ষা চলছে...' : 'গ্রামার ও বানান পরীক্ষা করুন'}
+            </Button>
+            {grammarError && <Alert severity="error" sx={{ mt: 1 }}>{grammarError}</Alert>}
+            {grammarSuggestions.length > 0 && (
+              <Box sx={{ mt: 2 }}>
+                <Typography variant="subtitle2" sx={{ mb: 1 }}>পরামর্শ</Typography>
+                <Stack spacing={1.5}>
+                  {grammarSuggestions.map((suggestion) => {
+                    const section = sectionsState.find((item) => item.id === suggestion.sectionId);
+                    const sectionLabel = section?.header?.trim() || `Section ${sectionsState.findIndex((item) => item.id === suggestion.sectionId) + 1}`;
+
+                    return (
+                      <Alert key={`${suggestion.sectionId}-${suggestion.suggestion}`} severity="info" sx={{ alignItems: 'flex-start' }}>
+                        <Typography variant="subtitle2">{sectionLabel}</Typography>
+                        <Typography variant="body2">প্রস্তাব: {suggestion.suggestion}</Typography>
+                        <Typography variant="body2">কারণ: {suggestion.reason}</Typography>
+                      </Alert>
+                    );
+                  })}
+                </Stack>
+              </Box>
+            )}
+          </Box>
         )}
         {!isEditMode && !summary && (
           <Button variant="contained" onClick={onCreateSummary} disabled={Boolean(summaryPending)}>

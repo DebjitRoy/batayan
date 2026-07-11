@@ -606,14 +606,14 @@ export async function createSummary(content: string, token: string): Promise<str
   return response.jobId;
 }
 
-export async function checkGrammerForSections(sections:string[], token: string): Promise<string> {
-  const response = await requestJson<string>('/grammar-check', {
+export async function checkGrammerForSections(sections:{id:string,text:string}[], token: string): Promise<string> {
+  const response = await requestJson<{ jobId: string, status: JobStatus }>('/grammer-check', {
     method: 'POST',
     headers: authHeaders(token),
     body: JSON.stringify({ sections })
   });
 
-  return response;
+  return response.jobId;
 }
 
 export async function getWorkerData(workerId: string, token: string): Promise<WorkerJob> {

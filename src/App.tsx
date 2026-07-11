@@ -14,15 +14,20 @@ import AdminPage from './pages/AdminPage';
 import CreatePostPage from './pages/CreatePostPage';
 import { posts as initialPosts } from './data/posts';
 import { Post } from './types';
-import { CreatePostInput, createPost, createSummary, deletePost, fetchPost, fetchPosts, getWorkerData, loginAuthor, registerAuthor, updatePost, updatePostStatus } from './services/postsApi';
+import { CreatePostInput, checkGrammerForSections, createPost, createSummary, deletePost, fetchPost, fetchPosts, getWorkerData, loginAuthor, registerAuthor, updatePost, updatePostStatus } from './services/postsApi';
+import { GrammarSuggestion, extractGrammarSuggestions, extractWorkerText } from './utils/workerResults';
 
 function App() {
   const [posts, setPosts] = useState<Post[]>(initialPosts);
   const [isLoadingPosts, setIsLoadingPosts] = useState(true);
-  const [summaryId, setSummaryId] = useState<string | null>(null);
+  const [activeWorkerId, setActiveWorkerId] = useState<string | null>(null);
+  const [activeWorkerType, setActiveWorkerType] = useState<'summary' | 'grammarCheck' | null>(null);
   const [generatedSummary, setGeneratedSummary] = useState<string | null>(null);
   const [summaryPending, setSummaryPending] = useState(false);
   const [summaryError, setSummaryError] = useState<string | null>(null);
+  const [grammarPending, setGrammarPending] = useState(false);
+  const [grammarError, setGrammarError] = useState<string | null>(null);
+  const [grammarSuggestions, setGrammarSuggestions] = useState<GrammarSuggestion[]>([]);
   const [postsError, setPostsError] = useState<string | null>(null);
   const [fontSize, setFontSize] = useState(16);
   const [colorMode, setColorMode] = useState<'dark' | 'light'>('light');
@@ -75,21 +80,23 @@ function App() {
 
   const handleLogin = async (email: string, password: string) => {
     const response = await loginAuthor(email, password);
-    setUser({ name: response.user.name || response.user.email, token: response.token });
-    if(user) {
-      setTimeout(() => {
-        navigate('/admin');
-      }, 1000);
+    if (!response.token) {
+      throw new Error('Login failed');
     }
+    setUser({ name: response.user.name || response.user.email, token: response.token });
+    setTimeout(() => {
+      navigate('/admin');
+    }, 500);
   };
   const handleRegister = async (email: string, password: string) => {
     const response = await registerAuthor(email, password);
-    setUser({ name: response.user.name || response.user.email, token: response.token });
-    if(user) {
-      setTimeout(() => {
-        navigate('/admin');
-      }, 1000);
+    if (!response.token) {
+      throw new Error('Registration failed');
     }
+    setUser({ name: response.user.name || response.user.email, token: response.token });
+    setTimeout(() => {
+      navigate('/admin');
+    }, 500);
   };
 
   const handleSavePost = async (newPost: CreatePostInput) => {
@@ -111,59 +118,88 @@ function App() {
     try {
       setSummaryError(null);
       setGeneratedSummary(null);
+      setGrammarError(null);
       const jobId = await createSummary(contents, user.token);
-      setSummaryId(jobId);
+      setActiveWorkerId(jobId);
+      setActiveWorkerType('summary');
       setSummaryPending(true);
-      console.log('Summary ID created:', jobId);
-    } catch (err) {
+      setGrammarPending(false);
+    } catch {
       setSummaryError('সারাংশ তৈরিতে ত্রুটি ঘটেছে। অনুগ্রহ করে আবার চেষ্টা করুন।');
       setSummaryPending(false);
     }
-  }
+  };
 
-  // Poll worker endpoint using intervals until completed/failed
+  const handleGrammerCheck = async (sections: Array<{ id: string; text: string }>) => {
+    if (!user) return;
+    try {
+      setGrammarError(null);
+      setGrammarSuggestions([]);
+      setSummaryError(null);
+      const jobId = await checkGrammerForSections(sections.map((section) => ({ id: section.id, text: section.text })), user.token);
+      setActiveWorkerId(jobId);
+      setActiveWorkerType('grammarCheck');
+      setGrammarPending(true);
+      setSummaryPending(false);
+    } catch {
+      setGrammarError('গ্রামার পরীক্ষা শুরু করতে ব্যর্থ হয়েছে। অনুগ্রহ করে আবার চেষ্টা করুন।');
+      setGrammarPending(false);
+    }
+  };
+
   useEffect(() => {
-    if (!summaryId || !user) return;
+    if (!activeWorkerId || !user || !activeWorkerType) return;
 
     let cancelled = false;
     const intervals = [1000, 2000, 3000, 5000];
-
-    const getSummaryFromWorker = (worker: any): string | null => {
-      if (!worker) return null;
-      if (typeof worker.result === 'string') return worker.result;
-      if (worker.result && typeof worker.result.summary === 'string') return worker.result.summary;
-      if (worker.data && typeof worker.data.summary === 'string') return worker.data.summary;
-      if (typeof worker.data === 'string') return worker.data;
-      return null;
-    };
 
     (async function poll() {
       let attempt = 0;
       while (!cancelled) {
         try {
-          const worker = await getWorkerData(summaryId as string, user.token);
+          const worker = await getWorkerData(activeWorkerId, user.token);
           if (cancelled) break;
 
+          const resolvedType = worker.jobType ?? activeWorkerType;
+
           if (worker.status === 'completed') {
-            const text = getSummaryFromWorker(worker);
-            setGeneratedSummary(text ?? null);
-            setSummaryPending(false);
-            setSummaryId(null);
-            setSummaryError(null);
+            if (resolvedType === 'grammarCheck') {
+              setGrammarSuggestions(extractGrammarSuggestions(worker));
+              setGrammarPending(false);
+              setGrammarError(null);
+            } else {
+              setGeneratedSummary(extractWorkerText(worker) ?? null);
+              setSummaryPending(false);
+              setSummaryError(null);
+            }
+
+            setActiveWorkerId(null);
+            setActiveWorkerType(null);
             break;
           }
 
           if (worker.status === 'failed') {
-            setSummaryError(worker.error ?? 'সারাংশ তৈরিতে ব্যর্থ হয়েছে।');
-            setSummaryPending(false);
-            setSummaryId(null);
+            if (resolvedType === 'grammarCheck') {
+              setGrammarError(worker.error ?? 'গ্রামার পরীক্ষায় ব্যর্থ হয়েছে।');
+              setGrammarPending(false);
+            } else {
+              setSummaryError(worker.error ?? 'সারাংশ তৈরিতে ব্যর্থ হয়েছে।');
+              setSummaryPending(false);
+            }
+            setActiveWorkerId(null);
+            setActiveWorkerType(null);
             break;
           }
-        } catch (e) {
-          // network or server error - set error and stop polling
-          setSummaryError('সার্ভারে জব স্ট্যাটাস পাওয়া যায়নি। পরে চেষ্টা করুন।');
-          setSummaryPending(false);
-          setSummaryId(null);
+        } catch {
+          if (activeWorkerType === 'grammarCheck') {
+            setGrammarError('সার্ভারে জব স্ট্যাটাস পাওয়া যায়নি। পরে চেষ্টা করুন।');
+            setGrammarPending(false);
+          } else {
+            setSummaryError('সার্ভারে জব স্ট্যাটাস পাওয়া যায়নি। পরে চেষ্টা করুন।');
+            setSummaryPending(false);
+          }
+          setActiveWorkerId(null);
+          setActiveWorkerType(null);
           break;
         }
 
@@ -176,7 +212,7 @@ function App() {
     return () => {
       cancelled = true;
     };
-  }, [summaryId, user]);
+  }, [activeWorkerId, activeWorkerType, user]);
 
   const handleDelete = async (id: string) => {
     if (user) {
@@ -283,10 +319,14 @@ function App() {
                 <CreatePostPage 
                   onCreate={handleSavePost} 
                   onSummaryCreate={handleSummaryCreate} 
+                  onGrammarCheck={handleGrammerCheck}
                   editingPost={editingPost} 
                   generatedSummary={generatedSummary} 
                   summaryPending={summaryPending} 
                   summaryError={summaryError} 
+                  grammarPending={grammarPending}
+                  grammarError={grammarError}
+                  grammarSuggestions={grammarSuggestions}
                   clearSummary={() => { setGeneratedSummary(null); setSummaryError(null); }} /> : <Navigate to="/login" replace />}
               />
               <Route path="*" element={<Navigate to="/" replace />} />
