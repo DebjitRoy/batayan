@@ -28,6 +28,7 @@ function App() {
   const [grammarPending, setGrammarPending] = useState(false);
   const [grammarError, setGrammarError] = useState<string | null>(null);
   const [grammarSuggestions, setGrammarSuggestions] = useState<GrammarSuggestion[]>([]);
+  const [grammarCompleted, setGrammarCompleted] = useState(false);
   const [postsError, setPostsError] = useState<string | null>(null);
   const [fontSize, setFontSize] = useState(16);
   const [colorMode, setColorMode] = useState<'dark' | 'light'>('light');
@@ -109,6 +110,7 @@ function App() {
       const createdPost = await createPost(newPost, user.token);
       setPosts((current) => [createdPost, ...current]);
     }
+    setGrammarSuggestions([]);
 
     navigate('/admin');
   };
@@ -135,6 +137,7 @@ function App() {
     try {
       setGrammarError(null);
       setGrammarSuggestions([]);
+      setGrammarCompleted(false);
       setSummaryError(null);
       const jobId = await checkGrammerForSections(sections.map((section) => ({ id: section.id, text: section.text })), user.token);
       setActiveWorkerId(jobId);
@@ -167,6 +170,7 @@ function App() {
               setGrammarSuggestions(extractGrammarSuggestions(worker));
               setGrammarPending(false);
               setGrammarError(null);
+              setGrammarCompleted(true);
             } else {
               setGeneratedSummary(extractWorkerText(worker) ?? null);
               setSummaryPending(false);
@@ -182,6 +186,7 @@ function App() {
             if (resolvedType === 'grammarCheck') {
               setGrammarError(worker.error ?? 'গ্রামার পরীক্ষায় ব্যর্থ হয়েছে।');
               setGrammarPending(false);
+              setGrammarCompleted(false);
             } else {
               setSummaryError(worker.error ?? 'সারাংশ তৈরিতে ব্যর্থ হয়েছে।');
               setSummaryPending(false);
@@ -194,6 +199,7 @@ function App() {
           if (activeWorkerType === 'grammarCheck') {
             setGrammarError('সার্ভারে জব স্ট্যাটাস পাওয়া যায়নি। পরে চেষ্টা করুন।');
             setGrammarPending(false);
+            setGrammarCompleted(false);
           } else {
             setSummaryError('সার্ভারে জব স্ট্যাটাস পাওয়া যায়নি। পরে চেষ্টা করুন।');
             setSummaryPending(false);
@@ -326,6 +332,7 @@ function App() {
                   summaryError={summaryError} 
                   grammarPending={grammarPending}
                   grammarError={grammarError}
+                  grammarCompleted={grammarCompleted}
                   grammarSuggestions={grammarSuggestions}
                   clearSummary={() => { setGeneratedSummary(null); setSummaryError(null); }} /> : <Navigate to="/login" replace />}
               />

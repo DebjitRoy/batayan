@@ -33,8 +33,23 @@ interface CreatePostPageProps {
   summaryError?: string | null;
   grammarPending?: boolean;
   grammarError?: string | null;
+  grammarCompleted?: boolean;
   grammarSuggestions?: Array<{ sectionId: string; suggestion: string; reason: string }>;
   clearSummary?: () => void;
+}
+
+interface SectionState {
+  id: string;
+  header: string;
+  body: string;
+  imageFile: File | null;
+  imagePreview?: string;
+  imageCaption?: string;
+  videoLink?: string;
+  videoCaption?: string;
+  grammarSuggestion?: { suggestion: string; reason: string };
+  grammarOriginalBody?: string;
+  grammarAccepted?: boolean;
 }
 
 const TITLE_MAXLength = 100; // keep original constant naming style if needed
@@ -43,45 +58,26 @@ const SUMMARY_MAX_LENGTH = 500;
 const IMAGE_MAX_SIZE_BYTES = 300 * 1024;
 const IMAGE_MAX_SIZE_LABEL = '300KB';
 
-const buildSectionsState = (post?: Post) => {
+const buildSectionsState = (post?: Post): SectionState[] => {
   if (!post) {
     return [{ id: `sec-${Date.now()}`, header: '', body: '', imageFile: null }];
   }
 
-  const sections: Array<{
-    id: string;
-    header: string;
-    body: string;
-    imageFile: File | null;
-    imagePreview?: string;
-    imageCaption?: string;
-    videoLink?: string;
-    videoCaption?: string;
-  }> = [];
+  const sections: SectionState[] = [];
 
   for (let index = 0; index < post.sections.length; index += 1) {
     const section = post.sections[index];
+    const sectionId = section.id || `sec-${Date.now()}-${index}`;
     if (section.type === 'text') {
-      const next = post.sections[index + 1];
-      if (next?.type === 'text') {
-        sections.push({
-          id: `sec-${Date.now()}-${index}`,
-          header: section.content,
-          body: next.content,
-          imageFile: null
-        });
-        index += 1;
-      } else {
-        sections.push({
-          id: `sec-${Date.now()}-${index}`,
-          header: '',
-          body: section.content,
-          imageFile: null
-        });
-      }
+      sections.push({
+        id: sectionId,
+        header: '',
+        body: section.content,
+        imageFile: null
+      });
     } else if (section.type === 'image') {
       sections.push({
-        id: `sec-${Date.now()}-${index}`,
+        id: sectionId,
         header: '',
         body: '',
         imageFile: null,
@@ -90,7 +86,7 @@ const buildSectionsState = (post?: Post) => {
       });
     } else if (section.type === 'video') {
       sections.push({
-        id: `sec-${Date.now()}-${index}`,
+        id: sectionId,
         header: '',
         body: '',
         imageFile: null,
@@ -105,7 +101,7 @@ const buildSectionsState = (post?: Post) => {
     : [{ id: `sec-${Date.now()}`, header: '', body: '', imageFile: null }];
 };
 
-export default function CreatePostPage({ onCreate, onSummaryCreate, onGrammarCheck, editingPost, generatedSummary, summaryPending, summaryError, grammarPending, grammarError, grammarSuggestions = [], clearSummary }: CreatePostPageProps) {
+export default function CreatePostPage({ onCreate, onSummaryCreate, onGrammarCheck, editingPost, generatedSummary, summaryPending, summaryError, grammarPending, grammarError, grammarCompleted = false, grammarSuggestions = [], clearSummary }: CreatePostPageProps) {
   const isEditMode = Boolean(editingPost);
   const [title, setTitle] = useState(editingPost?.title ?? '');
   const [summary, setSummary] = useState(editingPost?.summary ?? '');
@@ -132,6 +128,24 @@ export default function CreatePostPage({ onCreate, onSummaryCreate, onGrammarChe
 
   const [sectionsState, setSectionsState] = useState(buildSectionsState(editingPost));
   const [expandedSection, setExpandedSection] = useState<string | false>(sectionsState?.[0]?.id ?? false);
+
+  useEffect(() => {
+    setSectionsState((current) =>
+      current.map((section) => {
+        const suggestion = grammarSuggestions.find((item) => item.sectionId === section.id);
+        if (!suggestion) {
+          return { ...section, grammarSuggestion: undefined };
+        }
+
+        return {
+          ...section,
+          grammarSuggestion: { suggestion: suggestion.suggestion, reason: suggestion.reason },
+          grammarOriginalBody: section.grammarOriginalBody ?? section.body,
+          grammarAccepted: section.grammarAccepted
+        };
+      })
+    );
+  }, [grammarSuggestions]);
 
   useEffect(() => {
     if (!editingPost) {
@@ -225,13 +239,40 @@ export default function CreatePostPage({ onCreate, onSummaryCreate, onGrammarChe
   };
 
   const onCheckGrammar = () => {
-    console.log('Checking grammar for sections:', {editingPost, sectionsState});
-    if(!editingPost){
-      throw new Error('Can\'t do Grammar check on a new post.');
-    }
-    const grammerCheckSections = editingPost.sections.filter((s) => s.type === 'text').map((s) => ({ id: s.id, text: s.content }));
-    onGrammarCheck(grammerCheckSections);
-    // onGrammarCheck(sectionsState.map((section) => ({ id: section.id, text: section.body })));
+    onGrammarCheck(sectionsState.map((section) => ({ id: section.id, text: section.body })));
+  };
+
+  const handleAcceptGrammarSuggestion = (sectionId: string) => {
+    setSectionsState((current) =>
+      current.map((section) => {
+        if (section.id !== sectionId || !section.grammarSuggestion) {
+          return section;
+        }
+
+        return {
+          ...section,
+          body: section.grammarSuggestion.suggestion,
+          grammarOriginalBody: section.grammarOriginalBody ?? section.body,
+          grammarAccepted: true
+        };
+      })
+    );
+  };
+
+  const handleUndoGrammarSuggestion = (sectionId: string) => {
+    setSectionsState((current) =>
+      current.map((section) => {
+        if (section.id !== sectionId || !section.grammarAccepted || section.grammarOriginalBody === undefined) {
+          return section;
+        }
+
+        return {
+          ...section,
+          body: section.grammarOriginalBody,
+          grammarAccepted: false
+        };
+      })
+    );
   };
 
   useEffect(() => {
@@ -297,6 +338,7 @@ export default function CreatePostPage({ onCreate, onSummaryCreate, onGrammarChe
         newPost.seriesPart = seriesPart;
       }
     }
+    
 
     setIsSubmitting(true);
     setSubmitError('');
@@ -544,6 +586,32 @@ export default function CreatePostPage({ onCreate, onSummaryCreate, onGrammarChe
                     <TextField label="Section header" value={sec.header} onChange={(e) => setSectionsState((s) => s.map((x) => (x.id === sec.id ? { ...x, header: e.target.value } : x)))} fullWidth sx={{ mt: 1 }} />
                     <TextField label="Body" value={sec.body} onChange={(e) => setSectionsState((s) => s.map((x) => (x.id === sec.id ? { ...x, body: e.target.value } : x)))} multiline rows={10} fullWidth sx={{ mt: 1 }} />
 
+                    {sec.grammarSuggestion && (
+                      <Box sx={{ mt: 2, p: 2, borderRadius: 2, border: '1px solid rgba(0,0,0,0.12)', bgcolor: 'rgba(25, 118, 210, 0.06)' }}>
+                        <Typography variant="subtitle2" sx={{ mb: 1, fontWeight: 600 }}>প্রস্তাবিত সংশোধন</Typography>
+                        <Box sx={{ mb: 1.5 }}>
+                          <Typography variant="caption" sx={{ display: 'block', fontWeight: 600, color: 'text.secondary', mb: 0.5 }}>সাজেশন</Typography>
+                          <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap', bgcolor: 'background.paper', p: 1.25, borderRadius: 1, border: '1px solid rgba(0,0,0,0.08)' }}>
+                            {sec.grammarSuggestion.suggestion}
+                          </Typography>
+                        </Box>
+                        <Box>
+                          <Typography variant="caption" sx={{ display: 'block', fontWeight: 600, color: 'text.secondary', mb: 0.5 }}>কারণ</Typography>
+                          <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap', color: 'text.secondary' }}>
+                            {sec.grammarSuggestion.reason}
+                          </Typography>
+                        </Box>
+                        <Stack direction="row" spacing={1} sx={{ mt: 2 }}>
+                          <Button size="small" variant="contained" onClick={() => handleAcceptGrammarSuggestion(sec.id)} disabled={Boolean(sec.grammarAccepted)}>
+                            Accept
+                          </Button>
+                          <Button size="small" variant="outlined" onClick={() => handleUndoGrammarSuggestion(sec.id)} disabled={!Boolean(sec.grammarAccepted)}>
+                            Undo
+                          </Button>
+                        </Stack>
+                      </Box>
+                    )}
+
                     <Box sx={{ mt: 1 }}>
                       <Typography sx={{ mb: 1 }}>Section Image (optional: browse or drop)</Typography>
                       <Box
@@ -607,7 +675,7 @@ export default function CreatePostPage({ onCreate, onSummaryCreate, onGrammarChe
         )}
         {showGrammarButton && (
           <Box>
-            <Button variant="outlined" onClick={onCheckGrammar} disabled={Boolean(grammarPending)}>
+            <Button variant="outlined" onClick={onCheckGrammar} disabled={Boolean(grammarPending) || grammarCompleted}>
               {grammarPending ? 'গ্রামার পরীক্ষা চলছে...' : 'গ্রামার ও বানান পরীক্ষা করুন'}
             </Button>
             {grammarError && <Alert severity="error" sx={{ mt: 1 }}>{grammarError}</Alert>}
@@ -622,7 +690,7 @@ export default function CreatePostPage({ onCreate, onSummaryCreate, onGrammarChe
                     return (
                       <Alert key={`${suggestion.sectionId}-${suggestion.suggestion}`} severity="info" sx={{ alignItems: 'flex-start' }}>
                         <Typography variant="subtitle2">{sectionLabel}</Typography>
-                        <Typography variant="body2">প্রস্তাব: {suggestion.suggestion}</Typography>
+                        {/* <Typography variant="body2">প্রস্তাব: {suggestion.suggestion}</Typography> */}
                         <Typography variant="body2">কারণ: {suggestion.reason}</Typography>
                       </Alert>
                     );
