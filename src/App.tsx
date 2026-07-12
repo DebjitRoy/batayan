@@ -14,7 +14,7 @@ import AdminPage from './pages/AdminPage';
 import CreatePostPage from './pages/CreatePostPage';
 import { posts as initialPosts } from './data/posts';
 import { Post } from './types';
-import { CreatePostInput, checkGrammerForSections, createPost, createSummary, deletePost, fetchPost, fetchPosts, getWorkerData, loginAuthor, registerAuthor, updatePost, updatePostStatus } from './services/postsApi';
+import { CreatePostInput, deletePost, fetchPost, fetchPosts, getWorkerData, loginAuthor, registerAuthor, updatePost, updatePostStatus, createPost, CreatePostResponse } from './services/postsApi';
 import { GrammarSuggestion, extractGrammarSuggestions, extractWorkerText } from './utils/workerResults';
 
 function App() {
@@ -22,6 +22,8 @@ function App() {
   const [isLoadingPosts, setIsLoadingPosts] = useState(true);
   const [activeWorkerId, setActiveWorkerId] = useState<string | null>(null);
   const [activeWorkerType, setActiveWorkerType] = useState<'summary' | 'grammarCheck' | null>(null);
+  const [activeSummaryJobId, setActiveSummaryJobId] = useState<string | null>(null);
+  const [activegrammerJobId, setActivegrammerJobId] = useState<string | null>(null);
   const [generatedSummary, setGeneratedSummary] = useState<string | null>(null);
   const [summaryPending, setSummaryPending] = useState(false);
   const [summaryError, setSummaryError] = useState<string | null>(null);
@@ -104,52 +106,33 @@ function App() {
     if (!user) return;
     setGrammarSuggestions([]);
     setGeneratedSummary(null);
-    if (editingPost) {
-      const updatedPost = await updatePost(editingPost.id, newPost, user.token);
-      setPosts((current) => current.map((post) => (post.id === updatedPost.id ? updatedPost : post)));
-      navigate('/admin');
-    } else {
-      const createdPost = await createPost(newPost, user.token);
-      const postId = createdPost.id;
-      navigate(`/create?edit=${postId}`);
-    }
-
-
     
-  };
-
-  const handleSummaryCreate = async (contents: string) => {
-    if (!user) return;
     try {
-      setSummaryError(null);
-      setGeneratedSummary(null);
-      setGrammarError(null);
-      const jobId = await createSummary(contents, user.token);
-      setActiveWorkerId(jobId);
-      setActiveWorkerType('summary');
-      setSummaryPending(true);
-      setGrammarPending(false);
-    } catch {
-      setSummaryError('সারাংশ তৈরিতে ত্রুটি ঘটেছে। অনুগ্রহ করে আবার চেষ্টা করুন।');
-      setSummaryPending(false);
-    }
-  };
-
-  const handleGrammerCheck = async (sections: Array<{ id: string; text: string }>) => {
-    if (!user) return;
-    try {
-      setGrammarError(null);
-      setGrammarSuggestions([]);
-      setGrammarCompleted(false);
-      setSummaryError(null);
-      const jobId = await checkGrammerForSections(sections.map((section) => ({ id: section.id, text: section.text })), user.token);
-      setActiveWorkerId(jobId);
-      setActiveWorkerType('grammarCheck');
-      setGrammarPending(true);
-      setSummaryPending(false);
-    } catch {
-      setGrammarError('গ্রামার পরীক্ষা শুরু করতে ব্যর্থ হয়েছে। অনুগ্রহ করে আবার চেষ্টা করুন।');
-      setGrammarPending(false);
+      let response: CreatePostResponse;
+      
+      if (editingPost) {
+        response = await updatePost(editingPost.id, newPost, user.token);
+        setPosts((current) => current.map((post) => (post.id === response.post.id ? response.post : post)));
+      } else {
+        response = await createPost(newPost, user.token);
+      }
+      
+      // Auto-start polling for AI results
+      if (response.summaryJobId) {
+        setActiveSummaryJobId(response.summaryJobId);
+        setSummaryPending(true);
+      }
+      if (response.grammerJobId) {
+        setActivegrammerJobId(response.grammerJobId);
+        setGrammarPending(true);
+      }
+      
+      // Navigate to edit page to show suggestions as they come in
+      const postId = response.post.id;
+      navigate(`/create?edit=${postId}`);
+    } catch (error) {
+      console.error('Error saving post:', error);
+      throw error;
     }
   };
 
@@ -222,6 +205,78 @@ function App() {
       cancelled = true;
     };
   }, [activeWorkerId, activeWorkerType, user]);
+
+  // Auto-poll for summary and grammar results after post creation/update
+  useEffect(() => {
+    if ((!activeSummaryJobId && !activegrammerJobId) || !user) return;
+
+    let cancelled = false;
+    const intervals = [1000, 2000, 3000, 5000];
+
+    (async function pollAI() {
+      let attempt = 0;
+      while (!cancelled) {
+        try {
+          if (activeSummaryJobId) {
+            const summaryWorker = await getWorkerData(activeSummaryJobId, user.token);
+            if (!cancelled && summaryWorker.status === 'completed') {
+              setGeneratedSummary(extractWorkerText(summaryWorker) ?? null);
+              setSummaryPending(false);
+              setSummaryError(null);
+              setActiveSummaryJobId(null);
+            } else if (!cancelled && summaryWorker.status === 'failed') {
+              setSummaryError(summaryWorker.error ?? 'সারাংশ তৈরিতে ব্যর্থ হয়েছে।');
+              setSummaryPending(false);
+              setActiveSummaryJobId(null);
+            }
+          }
+
+          if (activegrammerJobId) {
+            const grammarWorker = await getWorkerData(activegrammerJobId, user.token);
+            if (!cancelled && grammarWorker.status === 'completed') {
+              setGrammarSuggestions(extractGrammarSuggestions(grammarWorker));
+              setGrammarPending(false);
+              setGrammarError(null);
+              setGrammarCompleted(true);
+              setActivegrammerJobId(null);
+            } else if (!cancelled && grammarWorker.status === 'failed') {
+              setGrammarError(grammarWorker.error ?? 'গ্রামার পরীক্ষায় ব্যর্থ হয়েছে।');
+              setGrammarPending(false);
+              setGrammarCompleted(false);
+              setActivegrammerJobId(null);
+            }
+          }
+
+          // If both are done, stop polling
+          if (!activeSummaryJobId && !activegrammerJobId) {
+            break;
+          }
+        } catch (error) {
+          console.error('Error polling AI results:', error);
+          if (activeSummaryJobId) {
+            setSummaryError('সার্ভারে জব স্ট্যাটাস পাওয়া যায়নি। পরে চেষ্টা করুন।');
+            setSummaryPending(false);
+            setActiveSummaryJobId(null);
+          }
+          if (activegrammerJobId) {
+            setGrammarError('সার্ভারে জব স্ট্যাটাস পাওয়া যায়নি। পরে চেষ্টা করুন।');
+            setGrammarPending(false);
+            setGrammarCompleted(false);
+            setActivegrammerJobId(null);
+          }
+          break;
+        }
+
+        const wait = intervals[Math.min(attempt, intervals.length - 1)];
+        await new Promise((res) => setTimeout(res, wait));
+        attempt += 1;
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [activeSummaryJobId, activegrammerJobId, user]);
 
   const handleDelete = async (id: string) => {
     if (user) {
@@ -327,8 +382,6 @@ function App() {
                 element={user ? 
                 <CreatePostPage 
                   onCreate={handleSavePost} 
-                  onSummaryCreate={handleSummaryCreate} 
-                  onGrammarCheck={handleGrammerCheck}
                   editingPost={editingPost} 
                   generatedSummary={generatedSummary} 
                   summaryPending={summaryPending} 

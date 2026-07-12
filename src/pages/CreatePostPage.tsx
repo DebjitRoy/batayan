@@ -27,8 +27,6 @@ import { Post } from '../types';
 
 interface CreatePostPageProps {
   onCreate: (post: CreatePostInput) => Promise<void>;
-  onSummaryCreate: (contents: string) => Promise<void>;
-  onGrammarCheck: (sections: Array<{ id: string; text: string }>) => Promise<void>;
   editingPost?: Post;
   generatedSummary?: string | null;
   summaryPending?: boolean;
@@ -104,7 +102,7 @@ const buildSectionsState = (post?: Post): SectionState[] => {
     : [{ id: `sec-${Date.now()}`, header: '', body: '', imageFile: null }];
 };
 
-export default function CreatePostPage({ onCreate, onSummaryCreate, onGrammarCheck, editingPost, generatedSummary, summaryPending, summaryError, grammarPending, grammarError, grammarCompleted = false, grammarSuggestions = [], clearSummary }: CreatePostPageProps) {
+export default function CreatePostPage({ onCreate, editingPost, generatedSummary, summaryPending, summaryError, grammarPending, grammarError, grammarCompleted = false, grammarSuggestions = [], clearSummary }: CreatePostPageProps) {
   const isEditMode = Boolean(editingPost);
   const [title, setTitle] = useState(editingPost?.title ?? '');
   const [summary, setSummary] = useState(editingPost?.summary ?? '');
@@ -154,6 +152,7 @@ export default function CreatePostPage({ onCreate, onSummaryCreate, onGrammarChe
       })
     );
   }, [grammarSuggestions]);
+  console.log( {  grammarSuggestions, sectionsState } );
 
   useEffect(() => {
     if (!editingPost) {
@@ -241,10 +240,9 @@ export default function CreatePostPage({ onCreate, onSummaryCreate, onGrammarChe
   const isSeriesValid = !seriesEnabled || (seriesMode === 'existing' ? Boolean(selectedSeriesId) : Boolean(newSeriesTitle.trim() && newSeriesDescription.trim()));
   const showGrammarButton = status === 'draft' && isEditMode && sectionsState.some((section) => section.body.trim()) ;
 
-  const onCreateSummary = () => {
-    const contents = sectionsState.map((s) => s.body).filter(Boolean).join(' ');
-    setSummaryOriginalBody(summary);
-    onSummaryCreate(contents);
+  const handleUndoSummarySuggestion = () => {
+    setSummary(summaryOriginalBody);
+    setSummaryAccepted(false);
   };
 
   const handleAcceptSummarySuggestion = () => {
@@ -254,15 +252,6 @@ export default function CreatePostPage({ onCreate, onSummaryCreate, onGrammarChe
 
     setSummary(summarySuggestion);
     setSummaryAccepted(true);
-  };
-
-  const handleUndoSummarySuggestion = () => {
-    setSummary(summaryOriginalBody);
-    setSummaryAccepted(false);
-  };
-
-  const onCheckGrammar = () => {
-    onGrammarCheck(sectionsState.map((section) => ({ id: section.id, text: section.body })));
   };
 
   const handleAcceptGrammarSuggestion = (sectionId: string) => {
@@ -309,7 +298,7 @@ export default function CreatePostPage({ onCreate, onSummaryCreate, onGrammarChe
   }, [generatedSummary]);
 
   const submit = async () => {
-    if (!title || !summary || (!heroFile && !heroImage) || !isSeriesValid) return;
+    if (!title || (!heroFile && !heroImage) || !isSeriesValid) return;
 
     const newPost: CreatePostInput = {
       title,
@@ -732,29 +721,25 @@ export default function CreatePostPage({ onCreate, onSummaryCreate, onGrammarChe
         </Box>
 
         {isEditMode && (
-          <Button variant="contained" onClick={submit} disabled={!title || !summary || (!heroFile && !heroImage) || isSubmitting || !isSeriesValid}>
+          <Button variant="contained" onClick={submit} disabled={!title || !summary|| (!heroFile && !heroImage) || isSubmitting || !isSeriesValid}>
              পরিবর্তন সংরক্ষণ করুন
           </Button>
         )}
         {!isEditMode && (
-          <Button variant="contained" onClick={submit} disabled={!title || (!heroFile && !heroImage) || isSubmitting || !isSeriesValid || !summary}>
+          <Button variant="contained" onClick={submit} disabled={!title || (!heroFile && !heroImage) || isSubmitting || !isSeriesValid}>
              পোস্ট তৈরি করুন
           </Button>
         )}
         <Box sx={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', gap: 1.5, alignItems: 'center' }}>
-          <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1}>
-            {showGrammarButton && (
-              <Button variant="outlined" startIcon={<AutoAwesomeIcon />} onClick={onCheckGrammar} disabled={Boolean(isAiPending) || grammarCompleted}>
-                {grammarPending ? 'গ্রামার পরীক্ষা চলছে...' : 'গ্রামার ও বানান পরীক্ষা করুন'}
-              </Button>
-            )}
-            <Button variant="outlined" startIcon={<AutoAwesomeIcon />} onClick={onCreateSummary} disabled={Boolean(isAiPending) || Boolean(summary?.trim()) || Boolean(summarySuggestion)}>
-              {summaryPending ? 'সারাংশ তৈরি হচ্ছে...' : 'সারাংশ তৈরি করুন'}
-            </Button>
-          </Stack>
+          {(grammarPending || summaryPending) && (
+            <Typography variant="body2" sx={{ color: 'info.main', display: 'flex', alignItems: 'center', gap: 1 }}>
+              <AutoAwesomeIcon fontSize="small" sx={{ animation: 'spin 2s linear infinite', '@keyframes spin': { from: { transform: 'rotate(0deg)' }, to: { transform: 'rotate(360deg)' } } }} />
+              AI আপনার পোস্ট প্রক্রিয়া করছে...
+            </Typography>
+          )}
         </Box>
-        {showGrammarButton && grammarError && <Alert severity="error" sx={{ mt: 1 }}>{grammarError}</Alert>}
-        {showGrammarButton && grammarSuggestions.length > 0 && (
+        {grammarError && <Alert severity="error" sx={{ mt: 1 }}>{grammarError}</Alert>}
+        {grammarSuggestions.length > 0 && (
           <Box sx={{ mt: 1 }}>
             <Typography variant="subtitle2" sx={{ mb: 1 }}>পরামর্শ</Typography>
             <Stack spacing={1.5}>
