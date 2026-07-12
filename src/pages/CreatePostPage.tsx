@@ -18,7 +18,9 @@ import {
   AccordionSummary,
   AccordionDetails
 } from '@mui/material';
+import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
 import DeleteIcon from '@mui/icons-material/Delete';
+import AddIcon from '@mui/icons-material/Add';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import { CreatePostInput, SeriesItem, createSummary, fetchSeriesList, normalizePostType } from '../services/postsApi';
 import { Post } from '../types';
@@ -105,6 +107,9 @@ export default function CreatePostPage({ onCreate, onSummaryCreate, onGrammarChe
   const isEditMode = Boolean(editingPost);
   const [title, setTitle] = useState(editingPost?.title ?? '');
   const [summary, setSummary] = useState(editingPost?.summary ?? '');
+  const [summarySuggestion, setSummarySuggestion] = useState<string | null>(generatedSummary ?? null);
+  const [summaryAccepted, setSummaryAccepted] = useState(false);
+  const [summaryOriginalBody, setSummaryOriginalBody] = useState(editingPost?.summary ?? '');
   const [heroImage, setHeroImage] = useState(editingPost?.heroImage ?? '');
   const [heroFile, setHeroFile] = useState<File | null>(null);
   const [heroImageError, setHeroImageError] = useState('');
@@ -128,6 +133,8 @@ export default function CreatePostPage({ onCreate, onSummaryCreate, onGrammarChe
 
   const [sectionsState, setSectionsState] = useState(buildSectionsState(editingPost));
   const [expandedSection, setExpandedSection] = useState<string | false>(sectionsState?.[0]?.id ?? false);
+
+  const isAiPending = summaryPending || grammarPending;
 
   useEffect(() => {
     setSectionsState((current) =>
@@ -231,11 +238,26 @@ export default function CreatePostPage({ onCreate, onSummaryCreate, onGrammarChe
   }, [sectionsState]);
 
   const isSeriesValid = !seriesEnabled || (seriesMode === 'existing' ? Boolean(selectedSeriesId) : Boolean(newSeriesTitle.trim() && newSeriesDescription.trim()));
-  const showGrammarButton = status === 'draft' && sectionsState.some((section) => section.body.trim());
+  const showGrammarButton = status === 'draft' && isEditMode && sectionsState.some((section) => section.body.trim()) ;
 
   const onCreateSummary = () => {
     const contents = sectionsState.map((s) => s.body).filter(Boolean).join(' ');
+    setSummaryOriginalBody(summary);
     onSummaryCreate(contents);
+  };
+
+  const handleAcceptSummarySuggestion = () => {
+    if (!summarySuggestion) {
+      return;
+    }
+
+    setSummary(summarySuggestion);
+    setSummaryAccepted(true);
+  };
+
+  const handleUndoSummarySuggestion = () => {
+    setSummary(summaryOriginalBody);
+    setSummaryAccepted(false);
   };
 
   const onCheckGrammar = () => {
@@ -276,9 +298,13 @@ export default function CreatePostPage({ onCreate, onSummaryCreate, onGrammarChe
   };
 
   useEffect(() => {
-    if (generatedSummary) {
-      setSummary(generatedSummary);
+    if (!generatedSummary) {
+      return;
     }
+
+    setSummary(generatedSummary);
+    setSummarySuggestion(generatedSummary);
+    setSummaryAccepted(false);
   }, [generatedSummary]);
 
   const submit = async () => {
@@ -568,7 +594,7 @@ export default function CreatePostPage({ onCreate, onSummaryCreate, onGrammarChe
 
           <Stack spacing={2}>
             {sectionsState.map((sec, idx) => (
-              <Accordion key={sec.id} expanded={true} onChange={(_, expanded) => setExpandedSection(expanded ? sec.id : false)}>
+              <Accordion key={sec.id} defaultExpanded={true} onChange={(_, expanded) => setExpandedSection(expanded ? sec.id : false)}>
                 <AccordionSummary expandIcon={<ExpandMoreIcon />}>
                   <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
                     <Typography variant="subtitle1">{ `Section ${idx + 1}`}</Typography>
@@ -647,24 +673,52 @@ export default function CreatePostPage({ onCreate, onSummaryCreate, onGrammarChe
                     <TextField label="YouTube link (optional)" value={sec.videoLink || ''} onChange={(e) => setSectionsState((s) => s.map((x) => (x.id === sec.id ? { ...x, videoLink: e.target.value } : x)))} fullWidth sx={{ mt: 1 }} />
                     <TextField label="YouTube description" value={sec.videoCaption || ''} onChange={(e) => setSectionsState((s) => s.map((x) => (x.id === sec.id ? { ...x, videoCaption: e.target.value } : x)))} fullWidth sx={{ mt: 1 }} />
                   </Paper>
+                  <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 1 }}>
+                    <Button size="small" onClick={(e) => { e.stopPropagation(); addSectionAt(idx + 1); }} startIcon={<AddIcon />}>
+                      Add section
+                    </Button>
+                  </Box>
                 </AccordionDetails>
               </Accordion>
             ))}
           </Stack>
 
-          {(isEditMode || summary) && (
-          <TextField
-            label="সারাংশ"
-            value={summary}
-            onChange={(event) => setSummary(event.target.value)}
-            inputProps={{ maxLength: SUMMARY_MAX_LENGTH }}
-            helperText={`${summary.length}/${SUMMARY_MAX_LENGTH}`}
-            FormHelperTextProps={{ sx: { textAlign: 'right' } }}
-            multiline
-            rows={5}
-            fullWidth
-          />
-        )}
+          
+          <Box>
+            <TextField
+              label="সারাংশ"
+              value={summary}
+              onChange={(event) => setSummary(event.target.value)}
+              inputProps={{ maxLength: SUMMARY_MAX_LENGTH }}
+              helperText={`${summary.length}/${SUMMARY_MAX_LENGTH}`}
+              FormHelperTextProps={{ sx: { textAlign: 'right' } }}
+              multiline
+              rows={5}
+              fullWidth
+            />
+            {summarySuggestion && (
+              <Box sx={{ mt: 1.5, p: 2, borderRadius: 2, border: '1px solid rgba(0,0,0,0.12)', bgcolor: 'rgba(25, 118, 210, 0.06)' }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75, mb: 1 }}>
+                  <AutoAwesomeIcon color="primary" fontSize="small" />
+                  <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>
+                    AI সারাংশ প্রস্তাব
+                  </Typography>
+                </Box>
+                <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap', bgcolor: 'background.paper', p: 1.25, borderRadius: 1, border: '1px solid rgba(0,0,0,0.08)' }}>
+                  {summarySuggestion}
+                </Typography>
+                <Stack direction="row" spacing={1} sx={{ mt: 2 }}>
+                  <Button size="small" variant="contained" onClick={handleAcceptSummarySuggestion} disabled={!summarySuggestion || summaryAccepted}>
+                    Accept
+                  </Button>
+                  <Button size="small" variant="outlined" onClick={handleUndoSummarySuggestion} disabled={!summarySuggestion || !summaryAccepted}>
+                    Undo
+                  </Button>
+                </Stack>
+              </Box>
+            )}
+          </Box>
+        
 
         </Box>
 
@@ -673,42 +727,41 @@ export default function CreatePostPage({ onCreate, onSummaryCreate, onGrammarChe
              পরিবর্তন সংরক্ষণ করুন
           </Button>
         )}
-        {showGrammarButton && (
-          <Box>
-            <Button variant="outlined" onClick={onCheckGrammar} disabled={Boolean(grammarPending) || grammarCompleted}>
-              {grammarPending ? 'গ্রামার পরীক্ষা চলছে...' : 'গ্রামার ও বানান পরীক্ষা করুন'}
-            </Button>
-            {grammarError && <Alert severity="error" sx={{ mt: 1 }}>{grammarError}</Alert>}
-            {grammarSuggestions.length > 0 && (
-              <Box sx={{ mt: 2 }}>
-                <Typography variant="subtitle2" sx={{ mb: 1 }}>পরামর্শ</Typography>
-                <Stack spacing={1.5}>
-                  {grammarSuggestions.map((suggestion) => {
-                    const section = sectionsState.find((item) => item.id === suggestion.sectionId);
-                    const sectionLabel = section?.header?.trim() || `Section ${sectionsState.findIndex((item) => item.id === suggestion.sectionId) + 1}`;
-
-                    return (
-                      <Alert key={`${suggestion.sectionId}-${suggestion.suggestion}`} severity="info" sx={{ alignItems: 'flex-start' }}>
-                        <Typography variant="subtitle2">{sectionLabel}</Typography>
-                        {/* <Typography variant="body2">প্রস্তাব: {suggestion.suggestion}</Typography> */}
-                        <Typography variant="body2">কারণ: {suggestion.reason}</Typography>
-                      </Alert>
-                    );
-                  })}
-                </Stack>
-              </Box>
-            )}
-          </Box>
-        )}
-        {!isEditMode && !summary && (
-          <Button variant="contained" onClick={onCreateSummary} disabled={Boolean(summaryPending)}>
-            {summaryPending ? 'সারাংশ তৈরি হচ্ছে...' : 'সারাংশ তৈরি করুন'}
-          </Button>
-        )}
-        {!isEditMode && summary && (
-          <Button variant="contained" onClick={submit} disabled={!title || (!heroFile && !heroImage) || isSubmitting || !isSeriesValid}>
+        {!isEditMode && (
+          <Button variant="contained" onClick={submit} disabled={!title || (!heroFile && !heroImage) || isSubmitting || !isSeriesValid || !summary}>
              পোস্ট তৈরি করুন
           </Button>
+        )}
+        <Box sx={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', gap: 1.5, alignItems: 'center' }}>
+          <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1}>
+            {showGrammarButton && (
+              <Button variant="outlined" startIcon={<AutoAwesomeIcon />} onClick={onCheckGrammar} disabled={Boolean(isAiPending) || grammarCompleted}>
+                {grammarPending ? 'গ্রামার পরীক্ষা চলছে...' : 'গ্রামার ও বানান পরীক্ষা করুন'}
+              </Button>
+            )}
+            <Button variant="outlined" startIcon={<AutoAwesomeIcon />} onClick={onCreateSummary} disabled={Boolean(isAiPending) || Boolean(summary?.trim()) || Boolean(summarySuggestion)}>
+              {summaryPending ? 'সারাংশ তৈরি হচ্ছে...' : 'সারাংশ তৈরি করুন'}
+            </Button>
+          </Stack>
+        </Box>
+        {showGrammarButton && grammarError && <Alert severity="error" sx={{ mt: 1 }}>{grammarError}</Alert>}
+        {showGrammarButton && grammarSuggestions.length > 0 && (
+          <Box sx={{ mt: 1 }}>
+            <Typography variant="subtitle2" sx={{ mb: 1 }}>পরামর্শ</Typography>
+            <Stack spacing={1.5}>
+              {grammarSuggestions.map((suggestion) => {
+                const section = sectionsState.find((item) => item.id === suggestion.sectionId);
+                const sectionLabel = section?.header?.trim() || `Section ${sectionsState.findIndex((item) => item.id === suggestion.sectionId) + 1}`;
+
+                return (
+                  <Alert key={`${suggestion.sectionId}-${suggestion.suggestion}`} severity="info" sx={{ alignItems: 'flex-start' }}>
+                    <Typography variant="subtitle2">{sectionLabel}</Typography>
+                    <Typography variant="body2">কারণ: {suggestion.reason}</Typography>
+                  </Alert>
+                );
+              })}
+            </Stack>
+          </Box>
         )}
       </Stack>
     </Paper>

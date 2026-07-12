@@ -106,13 +106,16 @@ function App() {
     if (editingPost) {
       const updatedPost = await updatePost(editingPost.id, newPost, user.token);
       setPosts((current) => current.map((post) => (post.id === updatedPost.id ? updatedPost : post)));
+      navigate('/admin');
     } else {
       const createdPost = await createPost(newPost, user.token);
-      setPosts((current) => [createdPost, ...current]);
+      const postId = createdPost.id;
+      navigate(`/create?edit=${postId}`);
     }
     setGrammarSuggestions([]);
+    setGeneratedSummary(null);
 
-    navigate('/admin');
+    
   };
 
   const handleSummaryCreate = async (contents: string) => {
