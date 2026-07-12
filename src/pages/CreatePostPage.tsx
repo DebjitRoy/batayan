@@ -440,7 +440,7 @@ export default function CreatePostPage({ onCreate, onSummaryCreate, onGrammarChe
   const postCategories = { travel: 'ভ্রমণিকা', books: 'মনের আনন্দ', miscl: 'টুকিটাকি', guest: 'অতিথির কলম' } as const;
 
   return (
-    <Paper sx={{ p: 4, maxWidth: 760, mx: 'auto' }} elevation={3}>
+    <Paper sx={{ p: 4, mx: 'auto' }} elevation={3}>
       <Typography variant="h4" gutterBottom>
         {isEditMode ? 'পোস্ট সম্পাদনা করুন' : 'নতুন পোস্ট তৈরি করুন'}
       </Typography>
