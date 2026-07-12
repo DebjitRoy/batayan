@@ -57,6 +57,7 @@ interface SectionState {
 const TITLE_MAXLength = 100; // keep original constant naming style if needed
 const TITLE_MAX_LENGTH = 100;
 const SUMMARY_MAX_LENGTH = 500;
+const SECTION_MAX_LENGTH = 2000;
 const IMAGE_MAX_SIZE_BYTES = 300 * 1024;
 const IMAGE_MAX_SIZE_LABEL = '300KB';
 
@@ -610,7 +611,15 @@ export default function CreatePostPage({ onCreate, onSummaryCreate, onGrammarChe
                 <AccordionDetails>
                   <Paper sx={{ p: 2 }} elevation={0}>
                     <TextField label="Section header" value={sec.header} onChange={(e) => setSectionsState((s) => s.map((x) => (x.id === sec.id ? { ...x, header: e.target.value } : x)))} fullWidth sx={{ mt: 1 }} />
-                    <TextField label="Body" value={sec.body} onChange={(e) => setSectionsState((s) => s.map((x) => (x.id === sec.id ? { ...x, body: e.target.value } : x)))} multiline rows={10} fullWidth sx={{ mt: 1 }} />
+                    <TextField 
+                      label="Body" 
+                      value={sec.body} 
+                      onChange={(e) => setSectionsState((s) => s.map((x) => (x.id === sec.id ? { ...x, body: e.target.value } : x)))} 
+                      multiline rows={10} 
+                      fullWidth sx={{ mt: 1 }}
+                      inputProps={{ maxLength: SECTION_MAX_LENGTH }}
+                      helperText={`${sec.body.length}/${SECTION_MAX_LENGTH}`} 
+                    />
 
                     {sec.grammarSuggestion && (
                       <Box sx={{ mt: 2, p: 2, borderRadius: 2, border: '1px solid rgba(0,0,0,0.12)', bgcolor: 'rgba(25, 118, 210, 0.06)' }}>

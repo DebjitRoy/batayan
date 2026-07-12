@@ -102,7 +102,8 @@ function App() {
 
   const handleSavePost = async (newPost: CreatePostInput) => {
     if (!user) return;
-
+    setGrammarSuggestions([]);
+    setGeneratedSummary(null);
     if (editingPost) {
       const updatedPost = await updatePost(editingPost.id, newPost, user.token);
       setPosts((current) => current.map((post) => (post.id === updatedPost.id ? updatedPost : post)));
@@ -112,8 +113,7 @@ function App() {
       const postId = createdPost.id;
       navigate(`/create?edit=${postId}`);
     }
-    setGrammarSuggestions([]);
-    setGeneratedSummary(null);
+
 
     
   };
